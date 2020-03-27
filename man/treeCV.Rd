@@ -4,12 +4,11 @@
 \alias{treeCV}
 \title{Performs k-fold cross validation for selection optimal tuning parameter lambda.}
 \usage{
-treeCV(tre, sp.var, dat, outcome = c("time", "ae"), nfolds = 10,
-  param = seq(0, 200, 0.01), AIPWE = FALSE, N0 = 20, n0 = 5,
-  sort = TRUE, ctgs = NA, standardize = FALSE,
-  stabilize.type = c("linear", "rf"), stabilize = TRUE, scale.ae = FALSE,
-  haoda.method = FALSE, haoda.ae.level = NA, reverse.ae.scale = FALSE,
-  use.other.nodes = TRUE)
+treeCV(tre, sp.var, dat, efficacy = "y", risk = "r", nfolds = 10,
+  param = NULL, AIPWE = FALSE, N0 = 20, n0 = 5, sort = TRUE,
+  ctgs = NA, stabilize.type = c("linear", "rf"), stabilize = TRUE,
+  haoda.method = FALSE, haoda.ae.level = NA, use.other.nodes = TRUE,
+  use.bootstrap = FALSE, lambda = 0)
 }
 \arguments{
 \item{tre}{original large tree from grow.ITR()}

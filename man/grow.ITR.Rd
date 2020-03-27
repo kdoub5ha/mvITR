@@ -4,12 +4,12 @@
 \alias{grow.ITR}
 \title{Grows a large interaction tree}
 \usage{
-\method{grow}{ITR}(data, split.var, test = NULL, ctg = NULL,
-  outcome = c("time", "ae"), scale.ae = FALSE,
-  stabilize.type = c("linear", "rf"), min.ndsz = 20, n0 = 5,
-  mtry = length(split.var), max.depth = 15, standardize = FALSE,
-  AIPWE = FALSE, stabilize = TRUE, haoda.method = FALSE,
-  haoda.ae.level = NA, reverse.ae.scale = TRUE, use.other.nodes = TRUE)
+grow.ITR(data, split.var, test = NULL, ctg = NULL, efficacy = "y",
+  risk = "r", stabilize.type = c("linear", "rf"), min.ndsz = 20, n0 = 5,
+  mtry = length(split.var), max.depth = 15, AIPWE = FALSE,
+  stabilize = TRUE, haoda.method = FALSE, haoda.ae.level = NA,
+  reverse.ae.scale = FALSE, use.other.nodes = TRUE,
+  extremeRandomized = FALSE, lambda = 0)
 }
 \arguments{
 \item{data}{data set from which the tree is to be grown.  Must contain outcome, binary 

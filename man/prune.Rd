@@ -4,16 +4,13 @@
 \alias{prune}
 \title{Prunes a tree for a given penalty value}
 \usage{
-prune(tre, a, train, outcome = c("time", "ae"), test = NULL,
-  AIPWE = FALSE, n0 = 5, ctgs = NULL, haoda.method = FALSE,
-  haoda.ae.level = NA)
+prune(tre, a, test = NULL, AIPWE = FALSE, n0 = 5, ctgs = NULL,
+  haoda.method = FALSE, haoda.ae.level = NA, lambda = lambda)
 }
 \arguments{
 \item{tre}{sets the tree to be pruned}
 
 \item{a}{sets the value of the splitting penalty}
-
-\item{train}{the training data used to create the tree}
 
 \item{test}{the testing data to be used.  Defaults to NULL.}
 
@@ -22,6 +19,8 @@ prune(tre, a, train, outcome = c("time", "ae"), test = NULL,
 \item{n0}{minimum number of observations allowed in a treatment group. Defaults to 5.}
 
 \item{ctgs}{columns of categorical variables.}
+
+\item{train}{the training data used to create the tree}
 }
 \value{
 summary of pruned branches and the associated value of the tree after pruning.

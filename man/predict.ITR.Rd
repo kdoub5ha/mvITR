@@ -4,7 +4,7 @@
 \alias{predict.ITR}
 \title{Treatment Prediction Function}
 \usage{
-\method{predict}{ITR}(input, new.dat, ctgs = NULL)
+predict.ITR(input, new.dat, split.var, ctgs = NULL)
 }
 \arguments{
 \item{input}{tree or forest object from `grow.ITR` or `Build.RF.ITR`.}

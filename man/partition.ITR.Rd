@@ -7,7 +7,7 @@
 partition.ITR(dat, test = NULL, name = "0", min.ndsz = 20, n0 = 5,
   split.var, outcome = c("time", "ae"), ctg = ctg, max.depth = 15,
   mtry = length(split.var), dat.rest = NULL, max.score = NULL,
-  AIPWE = AIPWE)
+  AIPWE = AIPWE, use.other.nodes = TRUE)
 }
 \arguments{
 \item{dat}{data set from which the partition is to be made.  Must contain outcome, binary 

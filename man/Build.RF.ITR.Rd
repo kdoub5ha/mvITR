@@ -4,16 +4,18 @@
 \alias{Build.RF.ITR}
 \title{Builds the random forest of interaction trees}
 \usage{
-Build.RF.ITR(dat, test = NULL, col.y, col.trt = "trt", col.prtx = "prtx",
-  split.var, ctg = NULL, N0 = 20, n0 = 5, max.depth = 10, ntree = 500,
-  outcome = c("time", "ae"), scale.ae = FALSE,
-  mtry = max(floor(length(split.var)/3), 1), avoid.nul.tree = FALSE,
-  AIPWE = FALSE, stabilize = TRUE, stabilize.type = c("linear", "rf"),
-  haoda.method = TRUE, haoda.ae.level = NA, standardize = FALSE,
-  verbose = FALSE, reverse.ae.scale = FALSE, use.other.nodes = TRUE)
+Build.RF.ITR(dat, split.var, test = NULL, col.y = "y", col.r = "r",
+  col.trt = "trt", col.prtx = "prtx", ctg = NULL, N0 = 20, n0 = 5,
+  max.depth = 10, ntree = 500, mtry = max(floor(length(split.var)/3), 1),
+  avoid.nul.tree = FALSE, AIPWE = FALSE, stabilize = TRUE,
+  stabilize.type = c("linear", "rf"), haoda.method = TRUE,
+  haoda.ae.level = NA, verbose = FALSE, reverse.ae.scale = FALSE,
+  use.other.nodes = TRUE, extremeRandomized = FALSE, lambda = 0)
 }
 \arguments{
 \item{dat}{the data set being used to grow the random forest. Required input.}
+
+\item{split.var}{vector of columns containing the desired splitting variables.  Required input.}
 
 \item{test}{indicator that determines if testing data is also run with each tree in the forest.  Defaults to FALSE.}
 
@@ -22,8 +24,6 @@ Build.RF.ITR(dat, test = NULL, col.y, col.trt = "trt", col.prtx = "prtx",
 \item{col.trt}{the treatment indicator.  Must be binary. Required input.}
 
 \item{col.prtx}{the probability of being assigned to treatment group. Required input.}
-
-\item{split.var}{vector of columns containing the desired splitting variables.  Required input.}
 
 \item{ctg}{identifies the categorical input columns.  Defaults to NA.  Not available yet.}
 
