@@ -38,18 +38,17 @@
 
 
 Build.RF.ITR <- function(dat, 
+                         split.var, 
                          test = NULL, 
-                         col.y, 
+                         col.y = "y",
+                         col.r = "r",
                          col.trt = "trt", 
                          col.prtx = "prtx", 
-                         split.var, 
                          ctg = NULL,
                          N0 = 20, 
                          n0 = 5,  
                          max.depth = 10,
                          ntree = 500, 
-                         outcome = c("time", "ae"),
-                         scale.ae = FALSE,
                          mtry = max(floor(length(split.var)/3), 1),
                          avoid.nul.tree = FALSE, 
                          AIPWE = FALSE, 
@@ -57,65 +56,119 @@ Build.RF.ITR <- function(dat,
                          stabilize.type = c('linear', 'rf'), 
                          haoda.method = TRUE, 
                          haoda.ae.level = NA, 
-                         standardize = FALSE, 
                          verbose = FALSE, 
                          reverse.ae.scale = FALSE, 
-                         use.other.nodes = TRUE)
+                         use.other.nodes = TRUE, 
+                         extremeRandomized = FALSE,
+                         lambda = 0)
 {
   require(randomForest)
   out <- as.list(NULL)
   out$ID.Boots.Samples  <- as.list(1:ntree)
   out$TREES <- as.list(1:ntree)
-  stabilize.type <- match.arg(stabilize.type)
-  if(is.na(haoda.ae.level)) stop("Risk allowance level must be specified numeric")
-  outcome <- match.arg(outcome)
+  out$preds.oob <- matrix(NA, nrow = nrow(dat), ncol = ntree)
+  out$preds.inbag <- matrix(NA, nrow = nrow(dat), ncol = ntree)
+  out$preds.cumulative.oob <- matrix(NA, nrow = nrow(dat), ncol = ntree)
+  out$preds.cumulative.inbag <- matrix(NA, nrow = nrow(dat), ncol = ntree)
+  out$value.oob <- rep(NA, ntree)
+  out$value.inbag <- rep(NA, ntree)
+  out$risk.oob <- rep(NA, ntree)
+  out$risk.inbag <- rep(NA, ntree)
+  out$risk.bound.values <- NULL
   
+  # Initialize output if test set is included
+  if(!is.null(test)) {
+    out$test.preds <- matrix(NA, nrow = nrow(test), ncol = ntree)
+    out$test.preds.cumulative <- matrix(NA, nrow = nrow(test), ncol = ntree)
+    out$test.value <- rep(NA, ntree)
+    out$test.risk <- rep(NA, ntree)
+  }
+  
+  # set inputs
+  stabilize.type <- match.arg(stabilize.type)
+  if(haoda.method){
+    if(is.na(haoda.ae.level)) stop("Risk allowance level must be specified numeric")
+  }
+  
+  # set parameters for splitting criteria
   b <- 1
   while(b <= ntree){
-      # TAKE BOOTSTRAP SAMPLES
-      id.b <- sample(1:nrow(dat), size=nrow(dat), replace = T)
-      dat.b <- dat[unique(id.b),]
-      dat.test <- dat[-unique(id.b),]
-      # Generate tree based on b-th bootstrap sample
-      if(!is.null(test)){
-        tre.b <- grow.ITR(data = dat.b, test = NULL, min.ndsz = N0, n0 = n0, 
-                          split.var = split.var, ctg = ctg, max.depth = max.depth, 
-                          mtry = mtry, AIPWE = AIPWE, scale.ae = scale.ae, outcome = outcome, 
-                          stabilize = stabilize, standardize = standardize, haoda.method = haoda.method, 
-                          haoda.ae.level = haoda.ae.level, reverse.ae.scale = reverse.ae.scale, 
-                          use.other.nodes = use.other.nodes)
-      } else {
-        tre.b <- grow.ITR(data = dat.b, test = dat.test, min.ndsz = N0, n0 = n0, 
-                          split.var = split.var, ctg = ctg, max.depth = max.depth, 
-                          mtry = mtry, AIPWE = AIPWE, scale.ae = scale.ae, outcome = outcome, 
-                          stabilize = stabilize, standardize = standardize, haoda.method = haoda.method, 
-                          haoda.ae.level = haoda.ae.level, 
-                          use.other.nodes = use.other.nodes)
-      } 
-      if (avoid.nul.tree) {
-        if (nrow(tre.b$tree) > 1) {
-          out$ID.Boots.Samples[[b]] <- id.b
-          out$TREES[[b]] <- tre.b$tree
-          b <- b + 1
-        }
-      }
-      else {
+    # TAKE BOOTSTRAP SAMPLES
+    id.b <- sample(1:nrow(dat), size=nrow(dat), replace = TRUE)
+    dat.b <- dat[id.b,]
+    dat.test <- dat[-unique(id.b),]
+    
+    # Generate tree based on b-th bootstrap sample
+    seed <- sample.int(100000, 1)
+    set.seed(seed)
+    
+    tre.b <- grow.ITR(data = dat.b, test = test, min.ndsz = N0, n0 = n0, 
+                      split.var = split.var, ctg = ctg, max.depth = max.depth, 
+                      AIPWE = AIPWE, mtry = mtry,
+                      efficacy = col.y, risk = col.r, stabilize = stabilize,
+                      haoda.method = haoda.method, stabilize.type = stabilize.type,
+                      haoda.ae.level = haoda.ae.level, 
+                      use.other.nodes = use.other.nodes, 
+                      extremeRandomized = extremeRandomized, 
+                      lambda = lambda)
+    
+    if(avoid.nul.tree) {
+      if(nrow(tre.b$tree) > 1) {
         out$ID.Boots.Samples[[b]] <- id.b
         out$TREES[[b]] <- tre.b$tree
         b <- b + 1
       }
-      if(verbose){
-        if(b %in% seq(50, ntree, 50)) print(paste0("On Tree ", b))
+    } else {
+      out$ID.Boots.Samples[[b]] <- id.b
+      out$TREES[[b]] <- tre.b$tree
+      out$AEfit[[b]] <- tre.b$fit.ae
+      if(nrow(tre.b$tree) > 1){
+        preds <- predict.ITR(tre.b$tree, dat, split.var)$trt.pred
+        inbag.idx <- seq_along(1:nrow(dat)) %in% unique(id.b)
+        # tmp.risk.oob <- mean(dat[!inbag.idx,col.r] * (dat[!inbag.idx,col.trt] == preds[!inbag.idx]) / dat[!inbag.idx,col.prtx])
+        # tmp.risk.inbag <- mean(dat[inbag.idx,col.r] * (dat[inbag.idx,col.trt] == preds[inbag.idx]) / dat[inbag.idx,col.prtx])
+        
+        out$preds.oob[,b] <- ifelse(inbag.idx, NA, preds)
+        out$preds.inbag[,b] <- ifelse(inbag.idx, preds, NA)
       }
+      out$preds.cumulative.oob[,b] <- ifelse(rowMeans(out$preds.oob[,1:b,drop=F], na.rm = T) > 0.5, 1, 0)
+      out$preds.cumulative.inbag[,b] <- ifelse(rowMeans(out$preds.inbag[,1:b,drop=F], na.rm = T) > 0.5, 1, 0)
+      
+      if(b > 5){
+        out$value.inbag[b] <- mean(dat[,col.y] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$value.oob[b] <- mean(dat[,col.y] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$risk.inbag[b] <- mean(dat[,col.r] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$risk.oob[b] <- mean(dat[,col.r] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+      }
+      
+      if(!is.null(test)){
+        if(nrow(tre.b$tree) > 1){
+          out$test.preds[,b] <- predict.ITR(tre.b$tree, as.data.frame(test), split.var)$trt.pred
+        }
+        if(b > 5){
+          out$test.preds.cumulative[,b] <- ifelse(rowMeans(out$test.preds[,1:b,drop=F], na.rm = T) > 0.5, 1, 0)
+          out$test.value[b] <- mean(test[,col.y] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
+          out$test.risk[b] <- mean(test[,col.r] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
+        }
+      }
+      
+      b <- b + 1
     }
+    if(verbose){
+      if(b %in% seq(0, ntree, 100)) print(paste0("On Tree ", b))
+    }
+  }
   
   Model.Specification <- as.list(NULL)
   Model.Specification$data <- dat
   Model.Specification$split.var <- split.var
   Model.Specification$ctg <- ctg
   Model.Specification$col.y <- col.y
+  Model.Specification$col.r <- col.r
   Model.Specification$col.trt <- col.trt
   Model.Specification$col.prtx <- col.prtx
+  Model.Specification$lambda <- lambda
+  Model.Specification$haoda.ae.level <- haoda.ae.level
   out$Model.Specification <- Model.Specification
   return(out)
 }

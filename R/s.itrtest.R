@@ -57,5 +57,5 @@ s.itrtest <- function(dat, z, n0, aug){
     #   itr <- mean(first-second)
      }
   }
-  return(round(itr,4))
+  return(round(itr,8))
 }

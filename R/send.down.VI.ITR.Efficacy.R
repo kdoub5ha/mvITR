@@ -19,20 +19,20 @@
 
 
 
-send.down.VI.ITR<-function(dat.new, 
-                           tre, 
-                           col.y,
-                           col.r,
-                           col.trt, 
-                           col.prtx, 
-                           haoda.ae.level,
-                           lambda,
-                           ctg = NULL, 
-                           n0 = n0, 
-                           N0 = N0, 
-                           revise.tree = T,
-                           depth = 1, 
-                           AIPWE = AIPWE)
+send.down.VI.ITR.Efficacy <-function(dat.new, 
+                                 tre, 
+                                 col.y,
+                                 col.r,
+                                 col.trt, 
+                                 col.prtx, 
+                                 haoda.ae.level,
+                                 lambda,
+                                 ctg = NULL, 
+                                 n0 = n0, 
+                                 N0 = N0, 
+                                 revise.tree = T,
+                                 depth = 1, 
+                                 AIPWE = AIPWE)
 {
   #Retrieve information from the bootstrap sample tree
   node.dat <- rep(0, nrow(dat.new))   		# COLUMNS CAN BE ADDED TO DATA
@@ -97,7 +97,7 @@ send.down.VI.ITR<-function(dat.new,
                         maxRisk = haoda.ae.level,
                         status = rep(1, nrow(dat0)), 
                         n0 = 0, 
-                        lambda = lambda, 
+                        lambda = 0, 
                         z = z))# itrtest(dat0, z, n0=n0, AIPWE)
       tre0$score.test[i] <- t2
     }
@@ -125,7 +125,7 @@ send.down.VI.ITR<-function(dat.new,
                                              maxRisk = haoda.ae.level,
                                              status = rep(1, nrow(dat.new)), 
                                              n0 = 0, 
-                                             lambda = lambda, 
+                                             lambda = 0, 
                                              z = trt.pred)))#,score=itrtest(dat.new, trt.pred, n0=n0, AIPWE))
   return(out)
 }

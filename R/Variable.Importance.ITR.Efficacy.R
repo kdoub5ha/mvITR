@@ -28,15 +28,15 @@
 #' @export
 
 
-Variable.Importance.ITR <- function(RF.fit, 
-                                    n0 = 5, 
-                                    N0 = 20, 
-                                    sort = TRUE, 
-                                    details = FALSE,
-                                    truncate.zeros = TRUE,
-                                    depth = 1, 
-                                    AIPWE = FALSE){
-
+Variable.Importance.ITR.Efficacy <- function(RF.fit, 
+                                         n0 = 5, 
+                                         N0 = 20, 
+                                         sort = TRUE, 
+                                         details = FALSE,
+                                         truncate.zeros = TRUE,
+                                         depth = 1, 
+                                         AIPWE = FALSE){
+  
   trees <- RF.fit$TREES
   id.boots <- RF.fit$ID.Boots.Samples
   # ARGUMENTS FOR MODEL SPECIFICATION 
@@ -62,11 +62,11 @@ Variable.Importance.ITR <- function(RF.fit,
     n.oob <- nrow(dat.oob)	
     tre.b <- trees[[b]]
     ########## NOTE THAT revise.tree=T HERE! ##########
-    out0.b <- send.down.VI.ITR(dat.new=dat.oob, tre=tre.b, col.y=col.y, col.r = col.r, 
-                               col.trt=col.trt, col.prtx=col.prtx, ctg=ctg, 
-                               haoda.ae.level = haoda.ae.level, lambda = lambda,
-                               n0=n0, N0=N0, revise.tree=T,
-                               depth=depth, AIPWE = AIPWE)  
+    out0.b <- send.down.VI.ITR.Efficacy(dat.new=dat.oob, tre=tre.b, col.y=col.y, col.r = col.r, 
+                                    col.trt=col.trt, col.prtx=col.prtx, ctg=ctg, 
+                                    haoda.ae.level = haoda.ae.level, lambda = lambda,
+                                    n0=n0, N0=N0, revise.tree=T,
+                                    depth=depth, AIPWE = AIPWE)  
     tre0.b <- out0.b$tre0	
     if (nrow(tre0.b) > 0) {					### AVOID NULL TREES	
       Xs.b <- sort(unique(na.omit(tre0.b$var))) 
@@ -80,15 +80,15 @@ Variable.Importance.ITR <- function(RF.fit,
           dat.permuted <- dat.oob
           dat.permuted[ , col.xj] <- x.j[sample(1:n.oob,n.oob, replace=F)]
           ########## NOTE THAT revise.tree=F HERE! ##########
-          out0.bj <- send.down.VI.ITR(dat.new=dat.permuted, tre=tre0.b, col.y=col.y, col.r = col.r, col.trt=col.trt, 
-                                      col.prtx=col.prtx, ctg=ctg, n0=n0, N0=N0, revise.tree=F,depth=1,AIPWE = AIPWE,
-                                      haoda.ae.level = haoda.ae.level, lambda = lambda)
+          out0.bj <- send.down.VI.ITR.Efficacy(dat.new=dat.permuted, tre=tre0.b, col.y=col.y, col.r = col.r, col.trt=col.trt, 
+                                           col.prtx=col.prtx, ctg=ctg, n0=n0, N0=N0, revise.tree=F,depth=1,AIPWE = AIPWE,
+                                           haoda.ae.level = haoda.ae.level, lambda = lambda)
           tre0.bj <- out0.bj$tre0		
           G.j <- ifelse(nrow(tre0.bj) == 1, G.oob, out0.bj$score)
         }
-        if (G.j > G.oob) G.j <- G.oob  		
+        # if (G.j > G.oob) G.j <- G.oob
         ##################### PREVENTS NEGATIVE IMPORTANCE VALUES 
-        VI[j] <- VI[j] + (G.oob - G.j)#/G.oob
+        VI[j] <- VI[j] + abs(G.oob - G.j)#/G.oob
       }
     }	
   }

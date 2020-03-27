@@ -29,7 +29,6 @@ haoda.partition.ITR<-function(dat,
                               min.ndsz = 20, 
                               n0 = 5, 
                               split.var, 
-                              outcome = c('time'),
                               ctg = ctg,
                               max.depth = 15, 
                               mtry = length(split.var), 
@@ -37,7 +36,9 @@ haoda.partition.ITR<-function(dat,
                               max.score = NULL, 
                               AIPWE = AIPWE,
                               haoda.ae.level = NA, 
-                              use.other.nodes = TRUE)
+                              use.other.nodes = TRUE, 
+                              extremeRandomized = FALSE,
+                              lambda = 0)
 {   
   # inialize various variable
   call <- match.call()
@@ -48,7 +49,6 @@ haoda.partition.ITR<-function(dat,
   out$left <- NULL
   out$right <- NULL
   out$... <- NULL
-  outcome <- match.arg(outcome)
   # label the binary tree by 1 (left) and 2 (right).
   name.l <- paste(name, 1, sep="")
   name.r <- paste(name, 2, sep="")
@@ -65,15 +65,15 @@ haoda.partition.ITR<-function(dat,
   cut <- NA
   
   if(name=="0") {
-    dat.comb <- dat[ ,c('y', 'trt', 'prtx', 'ae')]
+    dat.comb <- dat[ ,c('y', 'trt', 'prtx', 'r', 'id')]
   } else{
-    dat.comb <- rbind(dat.rest[, c('y', 'trt', 'prtx', 'ae')], 
-                      dat[,c('y', 'trt', 'prtx', 'ae')])
+    dat.comb <- rbind(dat.rest[, c('y', 'trt', 'prtx', 'r', 'id')], 
+                      dat[,c('y', 'trt', 'prtx', 'r', 'id')])
   }
   
   # extract value from data
-  trt <- dat$trt
-  y <- dat$y
+  trt <- .subset2(dat, 'trt')
+  y <- .subset2(dat, 'y')
   vnames <- colnames(dat)
   # COMPUTE THE TREATMENT EFFECT IN CURRENT NODE
   trt.effect <- NA
@@ -92,15 +92,15 @@ haoda.partition.ITR<-function(dat,
     
     # Fulfill splitting conditions
     splitVars <- sample(split.var, size = m.try, replace = FALSE)
+    # splitVars <- sample(split.var, size = m.try, replace = FALSE)
     names(splitVars) <- colnames(dat)[splitVars]
-    
     # apply search algorithm to each potential split
     outSplit <- lapply(splitVars, function(i){
       x <- .subset2(dat, i)
       v.name <- vnames[i]
       temp <- sort(unique(x))
       is.ctg <- is.element(i, ctg)
-
+      
       if(length(temp) > 1) {
         # handle categorial variable first, otherwise take out the final value as no cut after it.
         if(is.ctg){
@@ -113,17 +113,21 @@ haoda.partition.ITR<-function(dat,
           zcutCat <- matrix(1)
         }
         
+        if(extremeRandomized){
+          zcut <- sort(sample(zcut, min(length(zcut), 20)))
+        }
+        
         if(name == "0"){
           if(!is.ctg){
             x.tmp <- x
           } else{
             x.tmp <- as.numeric(factor(x))
           }
-          datMatrix <- list(y = dat.comb$y, 
-                            ae = dat.comb$ae, 
+          datMatrix <- list(y = .subset2(dat.comb, 'y'), 
+                            ae = .subset2(dat.comb, 'r'), 
                             x = x.tmp, 
-                            prtx = dat.comb$prtx, 
-                            trt = dat.comb$trt, 
+                            prtx = .subset2(dat.comb, 'prtx'), 
+                            trt = .subset2(dat.comb, 'trt'), 
                             trtNew = rep(-1000, length(x)),
                             inNode = rep(1, length(x)))
         } else{
@@ -133,52 +137,62 @@ haoda.partition.ITR<-function(dat,
             x.tmp <- as.numeric(factor(c(dat.rest[,i], x)))
           }
           
-          datMatrix <- list(y = dat.comb$y, 
-                            ae = dat.comb$ae, 
+          datMatrix <- list(y = .subset2(dat.comb, 'y'), 
+                            ae = .subset2(dat.comb, 'r'), 
                             x = x.tmp, 
-                            prtx = dat.comb$prtx, 
-                            trt = dat.comb$trt,
+                            prtx = .subset2(dat.comb, 'prtx'), 
+                            trt = .subset2(dat.comb, 'trt'),
                             trtNew = c(dat.rest$trt.new, 
                                        rep(-1000, length(x))),
                             inNode = c(rep(0, length(dat.rest$y)), 
                                        rep(1, length(x))))
         }
-        # browser(expr = (v.name == "x1"))
         
         # set up split parameters
         splitParams <- list(isCtg = is.ctg, 
                             nodeSize = min.ndsz, 
                             trtSize = n0, 
                             maxRisk = haoda.ae.level, 
-                            useOtherNodes = use.other.nodes, 
-                            maxScore = max.score)
+                            useOtherNodes = as.numeric(use.other.nodes), 
+                            maxScore = max.score,
+                            lambda = lambda)
+        
         tmp <- splitConditional(zcut, zcutCat, datMatrix, splitParams)
-      return(tmp)
-    } else{
-      return(list(output = NA, direction = NA))
-    }
-  })
+        return(tmp)
+      } else{
+        return(list(output = NA, direction = NA, zcut = NA))
+      }
+    })
     
     # Extract best split info
     out.idx <- which.max(lapply(outSplit, function(xx) max(xx$output)))
-    x <- .subset2(dat, names(out.idx))
-    temp <- sort(unique(x))
-    tmp.idx <- which.max(outSplit[[out.idx]]$output)
-    if(outSplit[[out.idx]]$direction[tmp.idx] %in% c("l", "r")){
-      vname <- names(out.idx)
-      var <- which(colnames(dat) == vname)
-      max.score <- max(outSplit[[out.idx]]$output)
-      if(!is.null(ctg) & names(out.idx) %in% colnames(dat)[ctg]){
-        best.cut <- paste(unlist(power.set(temp)[tmp.idx]), collapse=",")
+    if(length(out.idx) != 0){
+      x <- .subset2(dat, names(out.idx))
+      if(extremeRandomized){
+        temp <- sort(outSplit[[out.idx]][["zcut"]])
       } else{
-        best.cut <- temp[-length(temp)][tmp.idx]
+        temp <- sort(unique(x))
       }
-      
-      cut <- cbind(outSplit[[out.idx]]$direction[tmp.idx], 
-                   as.character(best.cut))
+      tmp.idx <- which.max(outSplit[[out.idx]]$output)
+      if(outSplit[[out.idx]]$direction[tmp.idx] %in% c("l", "r")){
+        vname <- names(out.idx)
+        var <- which(colnames(dat) == vname)
+        max.score <- max(outSplit[[out.idx]]$output)
+        if(!is.null(ctg) & names(out.idx) %in% colnames(dat)[ctg]){
+          best.cut <- paste(unlist(power.set(temp)[tmp.idx]), collapse=",")
+        } else{
+          if(extremeRandomized){
+            best.cut <- temp[tmp.idx]
+          } else{
+            best.cut <- temp[-length(temp)][tmp.idx]
+          }
+        }
+        
+        cut <- cbind(outSplit[[out.idx]]$direction[tmp.idx], 
+                     as.character(best.cut))
+      }
     }
   }
-  
   # when testing data is provided, assess new treatment assignment 
   # using testing sample and the rule calculated from training sample
   # var is the covariates calcualted before where spliting adopts. 
@@ -201,11 +215,15 @@ haoda.partition.ITR<-function(dat,
         }
       }
       
-      if(is.null(test$status)) test$status <- 1
-      if(is.null(test$KM.cens)) test$KM.cens <- 1
-      score.test <- switch(outcome, 
-                           time = s.itrtest(test, z=grp.test, n0=n0, aug = AIPWE), 
-                           ae = itrtest(test, z=grp.test, n0=n0, aug = AIPWE))
+      score.test <- estITR(list(y = .subset2(test, 'y'), 
+                                prtx = .subset2(test, 'prtx'), 
+                                ae = .subset2(test, 'r'),
+                                trt = .subset2(test, 'trt'), 
+                                KM.cens = .subset2(test, 'KM.cens'), 
+                                status = .subset2(test, 'status'), 
+                                n0 = n0, z = grp.test, 
+                                lambda = lambda, maxRisk = haoda.ae.level))
+      
       if (!is.na(score.test)){
         out$name.l <- name.l
         out$name.r <- name.r
@@ -266,11 +284,15 @@ haoda.partition.ITR<-function(dat,
         out$right <- dat[!is.element(dat[,var], unlist(strsplit(best.cut, ","))),]
       } else {
         if(cut[1]=='l'){
-          out$left  <- cbind(dat[dat[,var]<= best.cut,],new.trt=rep(1,n=sum(dat[,var]<= best.cut)))
-          out$right <- cbind(dat[dat[,var]> best.cut, ],new.trt=rep(0,n=sum(dat[,var]> best.cut)))
+          out$left  <- data.frame(dat[dat[,var]<= best.cut, colnames(dat) != "new.trt"],
+                                  new.trt = rep(1,n=sum(dat[,var]<= best.cut)))
+          out$right <- data.frame(dat[dat[,var]> best.cut, colnames(dat) != "new.trt"],
+                                  new.trt = rep(0,n=sum(dat[,var]> best.cut)))
         }else{
-          out$left  <- cbind(dat[dat[,var]<= best.cut,],new.trt=rep(0,n=sum(dat[,var]<= best.cut)))
-          out$right <- cbind(dat[dat[,var]> best.cut, ],new.trt=rep(1,n=sum(dat[,var]> best.cut)))
+          out$left  <- data.frame(dat[dat[,var]<= best.cut, colnames(dat) != "new.trt"],
+                                  new.trt = rep(0,n=sum(dat[,var]<= best.cut)))
+          out$right <- data.frame(dat[dat[,var]> best.cut, colnames(dat) != "new.trt"],
+                                  new.trt = rep(1,n=sum(dat[,var]> best.cut)))
         }  
       }
       out$info <- data.frame(node=name, size = n, n.1=n.1, n.0=n.0, trt.effect=trt.effect, var = var, 

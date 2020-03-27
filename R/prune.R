@@ -24,29 +24,23 @@
 
 prune <- function(tre, 
                   a, 
-                  train, 
-                  outcome = c('time', 'ae'),
                   test = NULL, 
                   AIPWE = FALSE, 
                   n0 = 5, 
                   ctgs = NULL, 
                   haoda.method = FALSE, 
-                  haoda.ae.level = NA){
+                  haoda.ae.level = NA,
+                  lambda = lambda){
   
-  outcome <- match.arg(outcome)
   tre.in <- tre$tree
-  train$y <- tre$y 
-  if(!is.null(test)) test$y <- tre$y.test 
+  train <- tre$data 
+  if(!is.null(test) & is.null(test$y)) test$y <- tre$y.test 
+  if(!is.null(test) & is.null(test$r)) test$r <- tre$test$r
   
   # Handle null tre case
   if(is.null(dim(tre.in))){
     warning("No Need to Prune Further.")
     return(NA)
-  }
-  
-  if(haoda.method){
-    dat.haoda <- data.frame(train[,c("y", "trt", "prtx", "id", "ae")])
-    if(!is.null(test)) dat.haoda.test <- data.frame(test[,c("y", "trt", "prtx", "id", "ae")])
   }
   
   # If there are at least three terminal nodes we will determine pruning 
@@ -59,110 +53,123 @@ prune <- function(tre,
     tmp.v.ae <- vector("numeric")
     tmp.v.ae.test <- vector("numeric") 
   }
-
+# browser()
   while(n.tmnl > 1){
     #internal keeps track of all splits which are not terminal <NA> for score value
     subtrees[[subtree]] <- tre.in
     internal <- tre.in$node[!is.na(tre.in$cut.1)]
     l <- length(internal)
+    preds.tre.in <- predict.ITR(tre.in, train, split.vars)$trt.pred
+    L.tre.in <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
+                            maxRisk = haoda.ae.level,
+                            prtx = train$prtx, status = train$status, 
+                            lambda = lambda, KM.cens = train$KM.cens, 
+                            n0 = 0, z = preds.tre.in))
+    
     #r.value is the vector of mean score values across all splits
     r.value <- 
       sapply(1:l, function(xxx){
         #branch keeps track of all splits (terminal or not)
         #branch is a single path which can be followed down a given tree
         nodes.keep <- c(tre.in$node[!tre.in$node %in% de(internal[xxx], tree = tre.in)])
-        tmp <- tre.in[tre.in$node %in% nodes.keep , ]
+        tmp <- tre.in[tre.in$node %in% nodes.keep , , drop=F]
         tmp[tmp$node == internal[xxx], 6:ncol(tmp)] <- NA
         
         if(nrow(tmp) > 1){
-          trt.pred <- predict.ITR(tmp, train, ctgs = ctgs)$trt.pred
-
-          if(!haoda.method){
-            score <- switch(outcome, 
-                            time = s.itrtest(train, trt.pred, n0, AIPWE), 
-                            ae = itrtest(train, trt.pred, n0, AIPWE)) 
-          } else{
-            score <- itrtest(dat.haoda, trt.pred, n0, AIPWE)
-            ae.score <- mean(train$trt*trt.pred*train$ae / train$prtx + 
-                               (1-train$trt)*(1-trt.pred)*train$ae / (1-train$prtx))
-          }
+          trt.pred <- predict.ITR(tmp, train, tre$split.var, ctgs = ctgs)$trt.pred
+          # score <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
+          #                      prtx = train$prtx, status = train$status, 
+          #                      KM.cens = train$KM.cens, n0 = 5, z = trt.pred,
+          #                      lambda = lambda, maxRisk = haoda.ae.level))
+          # 
+          ae.score <- mean(train$r * (train$trt == trt.pred) / train$prtx)
+          y.score <- mean(train$y * (train$trt == trt.pred) / train$prtx)
+          score <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
+                               maxRisk = haoda.ae.level,
+                               prtx = train$prtx, status = train$status, 
+                               lambda = lambda, KM.cens = train$KM.cens, 
+                               n0 = 0, z = trt.pred))
         }else{
-          if(!haoda.method){
-            score <- switch(outcome, 
-                            time = max(s.itrtest(train, rep(0,nrow(train)), 0, AIPWE), 
-                                       s.itrtest(train, rep(1,nrow(train)), 0, AIPWE)), 
-                            ae = max(itrtest(train, rep(0,nrow(train)), 0, AIPWE), 
-                                     itrtest(train, rep(1,nrow(train)), 0, AIPWE)))
-          } else{
-            score <- max(sapply(0:1, function(xx) 
-              itrtest(dat.haoda, rep(xx, nrow(dat.haoda)), -1, AIPWE)))
-            ae.score <- max(mean((train$trt==0)*train$ae / train$prtx), 
-                            mean((train$trt==1)*train$ae / train$prtx))
-          }
+          scores <- sapply(0:1, function(iii)
+            estITR(list(y = train$y, trt = train$trt, ae = train$r, maxRisk = haoda.ae.level,
+                        prtx = train$prtx, status = train$status, lambda = lambda,
+                        KM.cens = train$KM.cens, n0 = 0, z = rep(iii, nrow(train)))))
+          idx.scores <- which.max(scores)
+          score <- scores[idx.scores]
+          ae.score <- mean(train$r * (train$trt == rep(idx.scores-1, nrow(train))) / train$prtx)
+          y.score <- mean(train$y * (train$trt == rep(idx.scores-1, nrow(train))) / train$prtx)
         }
+        
         if(!haoda.method){
-          return(score / sum(!is.na(tmp)))
+          return(score / sum(!is.na(tmp$var)))
         } else{
-          return(c(y = score / sum(!is.na(tmp)), r = ae.score))
+          # return(c(y = score / sum(!is.na(tmp)), r = ae.score))
+          return(c(y = score,
+                   y.diff = L.tre.in - score,
+                   y.score = y.score,
+                   r.score = ae.score))
         }
       })
-# browser()
-    if(nrow(tre.in) == 3){
+
+    if(nrow(tre.in) > 1){
       if(!haoda.method){
-        alpha <- min(r.value, na.rm = TRUE)
+        alpha <- max(r.value, na.rm = TRUE)
       } else{
-        alpha <- min(r.value["y",], na.rm = TRUE)
+        alpha <- max(r.value["y",], na.rm = TRUE)
+        r.value <- as.numeric(r.value["y",])
       }
     } else{
       if(!haoda.method){
-        alpha <- min(r.value[-1], na.rm = TRUE)
+        alpha <- max(r.value[-1], na.rm = TRUE)
       } else{
-        if(sum(r.value[2,] <= haoda.ae.level) > 0){
+        # alpha <- max(r.value["y",], na.rm = TRUE)
+        
+        if(sum(r.value["r",] <= haoda.ae.level) > 0){
           risk.idx <- (r.value["r",] <= haoda.ae.level)
-          max.order <- rank(r.value["y",])
-          tmp.alpha <- as.matrix(cbind(t(r.value), risk.idx, max.order))[risk.idx,]
+          max.order.y <- rank(r.value["y",])
+          max.order.r <- rank(r.value["r",])
+          tmp.alpha <- as.matrix(cbind(t(r.value), risk.idx, 
+                                       max.order.y, max.order.r))[risk.idx,,drop=FALSE]
           if(is.null(dim(tmp.alpha))){
             alpha <- tmp.alpha["y"]
           } else{
             if(nrow(tmp.alpha) > 1){
-              alpha <- data.frame(tmp.alpha)[which.min(as.numeric(tmp.alpha[-1,1]))+1,1]
+              alpha <- data.frame(tmp.alpha)[which.max(as.numeric(tmp.alpha[,"y"])),"y"]
             } else{
-              alpha <- data.frame(tmp.alpha)[which.min(as.numeric(tmp.alpha[,1])),1]
+              alpha <- data.frame(tmp.alpha)[which.max(as.numeric(tmp.alpha[,"y"])),"y"]
             }
           }
         } else{
-          alpha <- r.value["y",-1][which.min(r.value[1,-1])]
+          alpha <- r.value["y",-1][which.max(r.value["y",-1])]
         }
         r.value <- as.numeric(r.value["y",])
       }
     }
-
-    nod.rm <- sample(internal[r.value == alpha], 1)
-    trt.pred <- predict.ITR(tre.in, train, ctgs)$trt.pred
     
-    if(!haoda.method){
-      V <- switch(outcome, 
-                  time = s.itrtest(train, trt.pred, n0, AIPWE),
-                  ae = itrtest(train, trt.pred, n0, AIPWE))
-    } else{
-      V <- itrtest(dat.haoda, trt.pred, n0, AIPWE)
-      V.ae <- itrtest(data.frame(y = dat.haoda$ae, dat.haoda[,2:4]), trt.pred, n0, AIPWE)
-      tmp.v.ae <- c(tmp.v.ae, V.ae)
-    }
+    nod.rm <- sample(internal[r.value == alpha], 1)
+    trt.pred <- preds.tre.in
+    
+    V <- L.tre.in
     V.a <- V - a*sum(!is.na(tre.in$score))
     
     if(!is.null(test)){
       # Calculate value for the training set
-      trt.pred <- predict.ITR(tre.in, test, ctgs = ctgs)$trt.pred
-      if(!haoda.method){
-        V.test <- switch(outcome, 
-                         time = s.itrtest(dat = test, z=trt.pred, 0, AIPWE), 
-                         ae = itrtest(dat = test, z=trt.pred, 0, AIPWE)) 
-      } else{
-        V.test <- itrtest(dat = dat.haoda.test, z=trt.pred, 0, AIPWE)
-        V.ae.test <- itrtest(data.frame(y = dat.haoda.test$ae, dat.haoda.test[,2:4]), trt.pred, n0, AIPWE)
-        tmp.v.ae.test <- c(tmp.v.ae.test, V.ae.test)
-      }
+      trt.pred <- predict.ITR(tre.in, test, tre$split.var, ctgs = ctgs)$trt.pred
+      if(is.null(test$status)) test$status <- rep(1, nrow(test))
+      if(is.null(test$KM.cens)) test$KM.cens <- rep(1, nrow(test))
+      V.test <- estITR(list(y = .subset2(test, 'y'), 
+                            trt = .subset2(test, 'trt'), 
+                            ae = .subset2(test, 'r'), 
+                            maxRisk = haoda.ae.level,
+                            prtx = .subset2(test, 'prtx'),
+                            status = .subset2(test, 'status'),
+                            lambda = lambda,
+                            KM.cens = .subset2(test, 'KM.cens'),
+                            n0 = 0, z = trt.pred))
+      # V.ae.test <- estITR(list(y = test$r, trt = test$trt, 
+      #                          prtx = test$prtx, status = rep(1, nrow(test)), 
+      #                          KM.cens = rep(1, nrow(test)), n0 = 0, z = trt.pred))
+      # tmp.v.ae.test <- c(tmp.v.ae.test, V.ae.test)
       Va.test <- V.test - a*sum(!is.na(tre.in$score))
     }
     
@@ -203,74 +210,50 @@ prune <- function(tre,
       subtree <- subtree + 1
     }
   }
-# browser()
+  
   # HANDLE THE NULL TREE WITH THE ROOT NODE ONLY
-  if(!haoda.method){
-    switch(outcome, ae = {
-      if(!is.null(test)){
-        result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                      size.tmnl=1, alpha=9999, 
-                                      V=max(itrtest(train, rep(1,nrow(train)), 5, AIPWE), itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.a=max(itrtest(train, rep(1,nrow(train)), 5, AIPWE), itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.test=max(itrtest(test, rep(1,nrow(test)), 5, AIPWE), itrtest(test, rep(0, nrow(test)), 5, AIPWE)), 
-                                      Va.test=max(itrtest(test, rep(1,nrow(test)), 5, AIPWE), itrtest(test, rep(0, nrow(test)), 5, AIPWE))))
-      }else{
-        result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                      size.tmnl=1, alpha=9999, 
-                                      V=max(itrtest(train, rep(1,nrow(train)), 5, AIPWE), itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.a=max(itrtest(train, rep(1,nrow(train)), 5, AIPWE), itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.test=NA, Va.test=NA))    
-      }
-    }, 
-    time = {
-      if(!is.null(test)){
-        result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                      size.tmnl=1, alpha=9999, 
-                                      V=max(s.itrtest(train, rep(1,nrow(train)), 5, AIPWE), s.itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.a=max(s.itrtest(train, rep(1,nrow(train)), 5, AIPWE), s.itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.test=max(s.itrtest(test, rep(1,nrow(test)), 5, AIPWE), s.itrtest(test, rep(0, nrow(test)), 5, AIPWE)), 
-                                      Va.test=max(s.itrtest(test, rep(1,nrow(test)), 5, AIPWE), s.itrtest(test, rep(0, nrow(test)), 5, AIPWE))))
-      }else{
-        result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                      size.tmnl=1, alpha=9999, 
-                                      V=max(s.itrtest(train, rep(1,nrow(train)), 5, AIPWE), s.itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.a=max(s.itrtest(train, rep(1,nrow(train)), 5, AIPWE), s.itrtest(train, rep(0, nrow(train)), 5, AIPWE)), 
-                                      V.test=NA, Va.test=NA))    
-      }
-    })
+  tmp.train.v <- max(sapply(0:1, function(iii) 
+    estITR(list(y = train$y, trt = train$trt, ae = train$r, maxRisk = haoda.ae.level,
+                prtx = train$prtx, status = train$status, lambda = lambda,
+                KM.cens = train$KM.cens, n0 = 0, z = rep(iii, nrow(train))))))
+  if(!is.null(test)){
+    tmp.test.v <- max(sapply(0:1, function(iii) 
+      estITR(list(y = test$y, trt = test$trt, ae = test$r, maxRisk = haoda.ae.level,
+                  prtx = test$prtx, status = test$status, lambda = lambda,
+                  KM.cens = test$KM.cens, n0 = 0, z = rep(iii, nrow(test))))))
+    result <- rbind(result, cbind(subtree=subtree, node.rm='NA',
+                                  size.tree=nrow(tre.in), 
+                                  size.tmnl=1, alpha=9999, 
+                                  V = tmp.train.v, 
+                                  V.a = tmp.train.v, 
+                                  V.test = tmp.test.v, 
+                                  Va.test = tmp.test.v))
   } else{
-    if(!is.null(test)){
-      result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                    size.tmnl=1, alpha=9999, 
-                                    V=max(itrtest(dat.haoda, rep(1,nrow(dat.haoda)), 5, AIPWE), itrtest(dat.haoda, rep(0, nrow(dat.haoda)), 5, AIPWE)), 
-                                    V.a=max(itrtest(dat.haoda, rep(1,nrow(dat.haoda)), 5, AIPWE), itrtest(dat.haoda, rep(0, nrow(dat.haoda)), 5, AIPWE)), 
-                                    V.test=max(itrtest(dat.haoda.test, rep(1,nrow(dat.haoda.test)), 5, AIPWE), itrtest(dat.haoda.test, rep(0, nrow(dat.haoda.test)), 5, AIPWE)), 
-                                    Va.test=max(itrtest(dat.haoda.test, rep(1,nrow(dat.haoda.test)), 5, AIPWE), itrtest(dat.haoda.test, rep(0, nrow(dat.haoda.test)), 5, AIPWE))))
-    }else{
-      result <- rbind(result, cbind(subtree=subtree, node.rm='NA', size.tree=nrow(tre.in), 
-                                    size.tmnl=1, alpha=9999, 
-                                    V=max(itrtest(dat.haoda, rep(1,nrow(dat.haoda)), 5, AIPWE), itrtest(dat.haoda, rep(0, nrow(dat.haoda)), 5, AIPWE)), 
-                                    V.a=max(itrtest(dat.haoda, rep(1,nrow(dat.haoda)), 5, AIPWE), itrtest(dat.haoda, rep(0, nrow(dat.haoda)), 5, AIPWE)), 
-                                    V.test=NA, Va.test=NA))    
-    }
-    
-    if(mean(train$time * train$trt / train$prtx) >  
-       mean(train$time * (1-train$trt) / train$prtx)){
-      tmp.trt <- rep(1,nrow(dat.haoda))
-      if(!is.null(test)) tmp.test.trt <- rep(1,nrow(dat.haoda.test))
-    } else{
-      tmp.trt <- rep(0,nrow(dat.haoda))
-      if(!is.null(test)) tmp.test.trt <- rep(0,nrow(dat.haoda.test))
-    }
-    tmp.v.ae <- c(tmp.v.ae, mean(dat.haoda$ae * (tmp.trt==dat.haoda$trt) / dat.haoda$prtx))
-    if(!is.null(test)) tmp.v.ae.test <- 
-      c(tmp.v.ae.test, mean(dat.haoda.test$ae * (tmp.test.trt==dat.haoda.test$trt) / dat.haoda.test$prtx))
+    result <- rbind(result, cbind(subtree=subtree, node.rm='NA', 
+                                  size.tree=nrow(tre.in), 
+                                  size.tmnl=1, alpha=9999, 
+                                  V = tmp.train.v, 
+                                  V.a = tmp.train.v, 
+                                  V.test=NA, Va.test=NA))    
   }
+  
+  if(mean(train$y * train$trt / train$prtx) >  
+     mean(train$y * (1-train$trt) / train$prtx)){
+    tmp.trt <- rep(1,nrow(train))
+    if(!is.null(test)) tmp.test.trt <- rep(1,nrow(test))
+  } else{
+    tmp.trt <- rep(0,nrow(train))
+    if(!is.null(test)) tmp.test.trt <- rep(0,nrow(test))
+  }
+  # tmp.v.ae <- c(tmp.v.ae, mean(train$ae * (tmp.trt==train$trt) / train$prtx))
+  # if(!is.null(test)) tmp.v.ae.test <- 
+  #   c(tmp.v.ae.test, mean(test$ae * (tmp.test.trt==test$trt) / test$prtx))
+  
   result <- as.data.frame(result)
   result <- result[!duplicated(result),]
   if(haoda.method){
-    out <- list(result = result, subtrees = subtrees, v.ae = tmp.v.ae)
-    out$v.ae.test <- tmp.v.ae.test
+    out <- list(result = result, subtrees = subtrees)#, v.ae = tmp.v.ae)
+    # out$v.ae.test <- tmp.v.ae.test
   } else{
     out <- list(result = result, subtrees = subtrees)  
   }

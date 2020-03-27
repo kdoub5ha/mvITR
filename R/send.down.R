@@ -19,8 +19,8 @@ send.down <- function(dat.new,
   call <- match.call()
   out <- match.call(expand = F)
   out$tree <- out$data <- out$... <- NULL
-  dats <- cbind(dat.new, node=0)
-  tre.new <- cbind(tre, n.test=NA)
+  dats <- cbind.data.frame(dat.new, node = "0")
+  tre.new <- cbind.data.frame(tre, n.test = NA)
   cut.point <- as.vector(tre$cut.2) 
   split.v <- as.numeric(as.vector(tre$var)) 
   for (i in 1:nrow(tre)){

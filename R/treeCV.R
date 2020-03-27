@@ -49,7 +49,8 @@
 treeCV <- function(tre, 
                    sp.var, 
                    dat, 
-                   outcome = c("time", "ae"),
+                   efficacy = 'y',
+                   risk = 'r',
                    nfolds = 10, 
                    param = NULL, 
                    AIPWE = FALSE, 
@@ -57,27 +58,23 @@ treeCV <- function(tre,
                    n0=5, 
                    sort = TRUE, 
                    ctgs = NA, 
-                   standardize = FALSE,
                    stabilize.type = c('linear', 'rf'), 
                    stabilize = TRUE, 
-                   scale.ae = FALSE,
                    haoda.method = FALSE, 
                    haoda.ae.level = NA, 
-                   reverse.ae.scale = FALSE, 
                    use.other.nodes = TRUE, 
-                   use.bootstrap = FALSE){
-
+                   use.bootstrap = FALSE,
+                   lambda = 0){
+  
   input.tre <- tre$tree
   input.dat <- dat
-  input.dat$y <- tre$y
-
+  
   # Model residuals if requested
-  outcome <- match.arg(outcome)
   stabilize.type <- match.arg(stabilize.type)
   
-  if(is.null(param)){
-    param <- seq(0, max(input.tre$score, na.rm = TRUE), length.out = 1000)
-  }
+  # if(is.null(param)){
+  #   param <- seq(0, max(input.tre$score, na.rm = TRUE), length.out = 1000)
+  # }
   
   # Shuffle data
   if(!use.bootstrap){
@@ -87,9 +84,10 @@ treeCV <- function(tre,
     if(sort) input.dat <- input.dat[sample(1:nrow(input.dat), size = nrow(input.dat)),]
     folds <- lapply(1:nfolds, function(i) unique(sample(1:nrow(input.dat), nrow(input.dat), replace = TRUE)))
   }
-
+  
   in.train <- in.test <- trees <- list()
-
+  
+  # divide samples into training and testing based on n.folds specified
   for(k in 1:nfolds){
     if(!use.bootstrap){ # use traditional CV
       in.train[[k]] <- input.dat[-which(folds==k,arr.ind=TRUE),]
@@ -99,40 +97,52 @@ treeCV <- function(tre,
       in.test[[k]] <- input.dat[-folds[[k]],]
     }
   }
-
+  
   trees <- lapply(1:nfolds, function(n) 
-      grow.ITR(data = in.train[[n]], test = in.test[[n]], 
-               split.var = sp.var, standardize = standardize, outcome = outcome,
-               min.ndsz = N0, n0 = n0, AIPWE = AIPWE, ctg = ctgs, 
-               stabilize = stabilize, stabilize.type = stabilize.type, 
-               max.depth = 5, haoda.method = haoda.method, 
-               haoda.ae.level = haoda.ae.level, 
-               scale.ae = scale.ae, 
-               reverse.ae.scale = reverse.ae.scale, 
-               use.other.nodes = use.other.nodes))
-
+    grow.ITR(data = in.train[[n]], test = in.test[[n]], 
+             split.var = sp.var, efficacy = efficacy,
+             risk = risk, min.ndsz = N0, n0 = n0, AIPWE = AIPWE, ctg = ctgs, 
+             stabilize = stabilize, stabilize.type = stabilize.type,
+             max.depth = 10, haoda.method = haoda.method, 
+             haoda.ae.level = haoda.ae.level, 
+             use.other.nodes = use.other.nodes,
+             lambda = lambda))
+  
   out <- lapply(1:length(trees), function(tt){
     if(!is.null(dim(trees[[tt]]$tree) & nrow(trees[[tt]]$tree) != 1)){
-      tmp <- prune(trees[[tt]], 0, train = in.train[[tt]], test = in.test[[tt]], 
-                   AIPWE = FALSE, ctgs = ctgs, outcome = outcome, 
+      tmp <- prune(trees[[tt]], 0, 
+                   test = trees[[tt]]$test, 
+                   AIPWE = FALSE, ctgs = ctgs, 
                    haoda.method = haoda.method, 
-                   haoda.ae.level = haoda.ae.level)
-      
-      if(haoda.method){
-        out <- list(as.numeric(tmp$result$V.test), 
-                    tmp$v.ae)
-        names(out[[1]]) <- tmp$result$size.tmnl
-        names(out[[2]]) <- tmp$result$size.tmnl
-      } else{
-        out <- as.numeric(tmp$result$V.test)
-        names(out) <- tmp$result$size.tmnl
-      }
+                   haoda.ae.level = haoda.ae.level, 
+                   lambda = lambda)
+      out <- as.numeric(tmp$result$V.test)
+      names(out) <- tmp$result$size.tmnl
       return(out)
     }
   })
-
-  if(haoda.method) out2 <- sapply(out, "[", 2)
-  out <- sapply(out, "[", 1)
+  
+  outAlpha <- lapply(1:length(trees), function(tt){
+    if(!is.null(dim(trees[[tt]]$tree) & nrow(trees[[tt]]$tree) != 1)){
+      tmp <- prune(trees[[tt]], 0, 
+                   test = trees[[tt]]$test, 
+                   AIPWE = FALSE, ctgs = ctgs, 
+                   haoda.method = haoda.method, 
+                   haoda.ae.level = haoda.ae.level, 
+                   lambda = lambda)
+      out <- data.frame(V.test = as.numeric(tmp$result$V.test), 
+               alpha = as.numeric(tmp$result$alpha))
+      return(out)
+    }
+  })
+  
+  best.alpha2 <- do.call(c, lapply(outAlpha, function(tt){
+    as.numeric(tt$alpha[which.max(tt$V.test)])
+  }))
+  best.alpha2 <- mean(best.alpha2[best.alpha2 != 9999])
+  
+  # if(haoda.method) out2 <- sapply(out, "[", 2)
+  # out <- sapply(out, "[", 1)
   min.length <- min(sapply(out, length))
   max.length <- max(sapply(out, length))
   
@@ -144,7 +154,7 @@ treeCV <- function(tre,
   rownames(validSummary) <- paste0("n.tmnl=", 1:nrow(validSummary))
   
   if(haoda.method){
-    validSummary2 <- matrix(sapply(out2, function(i){
+    validSummary2 <- matrix(sapply(out, function(i){
       out2 <- rev(i)
       length(out2) <- max.length
       return(out2)}), ncol = nfolds)
@@ -153,47 +163,43 @@ treeCV <- function(tre,
   }
   
   m <- apply(validSummary, 1, function(i){
-    ifelse(mean(is.na(i)) <= 0.25, mean(i, na.rm = TRUE), NA)
+    ifelse(mean(is.na(i)) <= 0.1, mean(i, na.rm = TRUE), NA)
   })
   SD <- apply(validSummary, 1, function(i){
-    ifelse(mean(is.na(i)) <= 0.25, sd(i, na.rm = TRUE), NA)
+    ifelse(mean(is.na(i)) <= 0.1, sd(i, na.rm = TRUE), NA)
   })
   l <- ncol(validSummary)
-
+  
   if(haoda.method){
     m2 <- apply(validSummary2, 1, function(i){
-      ifelse(mean(is.na(i)) <= 0.25, mean(i, na.rm = TRUE), NA)
+      ifelse(mean(is.na(i)) <= 0.1, mean(i, na.rm = TRUE), NA)
     })
     SD2 <- apply(validSummary2, 1, function(i){
-      ifelse(mean(is.na(i)) <= 0.25, sd(i, na.rm = TRUE), NA)
+      ifelse(mean(is.na(i)) <= 0.1, sd(i, na.rm = TRUE), NA)
     })
     l <- ncol(validSummary2)
     
   }
-
-  full.tre.prune <- prune(tre, 0, dat, outcome, ctgs = ctgs,
+  
+  full.tre.prune <- prune(tre, 0, ctgs = ctgs,
                           haoda.method = haoda.method, 
-                          haoda.ae.level = haoda.ae.level)
+                          haoda.ae.level = tre$haoda.ae.level, 
+                          lambda = lambda)
   tmp.l <- nrow(full.tre.prune$result)
   final.length <- min(tmp.l, max.length)
-
+  
   result <- data.frame(tail(full.tre.prune$result, n = final.length)[,1:6], 
                        m = rev(head(m, n = final.length)), 
                        SD = rev(head(SD, n = final.length)), 
                        lower = rev(head(m, n = final.length)) - rev(head(SD, n = final.length))/sqrt(l), 
                        upper = rev(head(m, n = final.length)) + rev(head(SD, n = final.length))/sqrt(l))
   if(haoda.method) result$m2 <- rev(head(m2, n = final.length))
+  
   result <- result[complete.cases(result),]
-
+  
   rm(m, SD, l)
   
-  if(haoda.method){
-    ae.idx <- result$m2 <= haoda.ae.level
-    if(sum(ae.idx) == 0) ae.idx <- !is.na(as.numeric(result$node.rm)) 
-    tmp.idx <- which(result$m[ae.idx] == max(result$m[ae.idx]))
-  } else{
-    tmp.idx <- which.max(result$m)
-  }
+  tmp.idx <- which.max(result$m)
   optSize <- result$size.tmnl[tmp.idx]
   best.alpha <- result$alpha[tmp.idx]
   best.subtree <- result$subtree[tmp.idx]
@@ -205,8 +211,16 @@ treeCV <- function(tre,
     best.tree <- full.tre.prune$subtrees[[as.numeric(best.subtree)]]
   }
 
-  setNames(list(best.tree, best.alpha, input.tre, full.tre.prune$result, 
-                input.dat, result, full.tre.prune$subtrees), 
-           c("best.tree", "best.lambda", "full.tree", 
-             "pruned.tree", "data", "details", "subtrees"))
+  best.tree2.idx <- which.min(abs(as.numeric(full.tre.prune$result$alpha) - as.numeric(best.alpha2)))
+  if(length(full.tre.prune$subtrees) < best.tree2.idx){
+    best.tree.alpha <- full.tre.prune$subtrees[[length(full.tre.prune$subtrees)]][1,,drop = FALSE]
+    best.tree.alpha[,6:ncol(best.tree.alpha)] <- NA
+  } else{
+    best.tree.alpha <- full.tre.prune$subtrees[[which.min(abs(as.numeric(full.tre.prune$result$alpha) - as.numeric(best.alpha2)))]]
+  }
+
+  setNames(list(best.tree, best.tree.alpha, best.alpha, best.alpha2, input.tre, full.tre.prune$result, 
+                input.dat, result, full.tre.prune$subtrees, in.train, in.test), 
+           c("best.tree", "best.tree.alpha", "best.alpha", "best.alpha2", "full.tree", 
+             "pruned.tree", "data", "details", "subtrees", "in.train", "in.test"))
 }

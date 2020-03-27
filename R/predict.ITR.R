@@ -27,7 +27,7 @@
 
 
 
-predict.ITR <- function(input, new.dat, ctgs = NULL){
+predict.ITR <- function(input, new.dat, split.var, ctgs = NULL){
   if(is.null(dim(input))){
     trees <- input$TREES
     n.trees <- length(trees)
@@ -46,37 +46,40 @@ predict.ITR <- function(input, new.dat, ctgs = NULL){
       tre <- trees
     }
     
-    if(nrow(tre) > 1){
-      send <- send.down(dat.new = dat, tre = tre, ctgs = ctgs)
-      node <- substr(send$data$node,1,nchar(as.character(send$data$node))-1)
-      direction <- substr(send$data$node,
-                          nchar(as.character(send$data$node)),
-                          nchar(as.character(send$data$node)))
-      trt.dir <- tre[match(node,tre$node),]$cut.1
-      
-      trt.pred <- ifelse(trt.dir=="r" & direction=="1",0,
-                       ifelse(trt.dir=="r" & direction=="2",1,
-                              ifelse(trt.dir=="l" & direction=="1",1,0)))
-    }else{
-      if(is.null(dim(input))){
-        trt.pred <- rep(NA, n)
+    if(nrow(tre) > 0){
+      if(!is.na(tre[1,6])){
+        idx <- !is.na(tre$cut.2)
+        cutPoint <- as.numeric(tre$cut.2[idx])
+        splitVar <- as.integer(tre$var[idx])
+        treNodes <- as.character(tre$node[idx])
+        direction <- as.character(tre$cut.1[idx])
+        Data <- as.matrix(dat[,split.var,drop=F])
+        send <- SendDown(cutPoint, splitVar, Data, treNodes, direction)
+        trt.pred <- send$trt.pred
       } else{
         trt.pred <- rep(NA, n)
       }
+    } else{
+      trt.pred <- rep(NA, n)
     }
+    
     return(trt.pred) 
   })
   
-  out$SummaryTreat <- apply(result, 1, FUN = mean, na.rm=T)
+  if(!(is.null(dim(result)) & length(result) == 1)){
+    out$SummaryTreat <- apply(result, 1, FUN = mean, na.rm=T)
+  } else{
+    out$SummaryTreat <- result
+  }
   if(is.null(dim(input))){
     out$trt.pred <- ifelse(out$SummaryTreat < 0.5, 0, 1)
   } else{
     out$trt.pred <- out$SummaryTreat
   }
-  
+
   out$n.trees <- n.trees
   out$tree.votes <- result
   out$data <- new.dat
-  out$NA.trees <- sum(is.na(result[,1]))
+  out$NA.trees <- ifelse((!(is.null(dim(result)) & length(result) == 1)), sum(is.na(result[1,])), NA)
   return(out)
 }

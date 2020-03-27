@@ -118,6 +118,7 @@ partition.ITR <- function(dat,
       
         if(name == "0"){
           x.tmp <- ifelse(rep(!is.ctg, length(x)), x, as.numeric(factor(x)))
+
           datMatrix <- list(y = dat.comb$y, 
                             x = x.tmp, 
                             prtx = dat.comb$prtx,

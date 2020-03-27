@@ -19,7 +19,7 @@
 
 
 
-send.down.VI.ITR<-function(dat.new, 
+send.down.VI.ITR.Risk <-function(dat.new, 
                            tre, 
                            col.y,
                            col.r,
@@ -89,7 +89,7 @@ send.down.VI.ITR<-function(dat.new,
         node.dat[in.node & !is.element(x.split, cut1)] <- paste(r.nd, 2, sep="")  	             
       }
       
-      t2 <- estITR(list(y = .subset2(dat0, 'y'), 
+      t2 <- estITR(list(y = .subset2(dat0, 'r'), 
                         prtx = .subset2(dat0, 'prtx'), 
                         ae = .subset2(dat0, 'r'),
                         trt = .subset2(dat0, 'trt'), 
@@ -97,7 +97,7 @@ send.down.VI.ITR<-function(dat.new,
                         maxRisk = haoda.ae.level,
                         status = rep(1, nrow(dat0)), 
                         n0 = 0, 
-                        lambda = lambda, 
+                        lambda = 0, 
                         z = z))# itrtest(dat0, z, n0=n0, AIPWE)
       tre0$score.test[i] <- t2
     }
@@ -117,7 +117,7 @@ send.down.VI.ITR<-function(dat.new,
                    ifelse(trt.dir=="r" & direction=="2",1,
                           ifelse(trt.dir=="l" & direction=="1",1,0)))
   
-  out  <- list(tre0=tre0,score = estITR(list(y = .subset2(dat.new, col.y), 
+  out  <- list(tre0=tre0,score = estITR(list(y = .subset2(dat.new, col.r), 
                                              prtx = .subset2(dat.new, col.prtx), 
                                              ae = .subset2(dat.new, col.r),
                                              trt = .subset2(dat.new, col.trt), 
@@ -125,7 +125,7 @@ send.down.VI.ITR<-function(dat.new,
                                              maxRisk = haoda.ae.level,
                                              status = rep(1, nrow(dat.new)), 
                                              n0 = 0, 
-                                             lambda = lambda, 
+                                             lambda = 0, 
                                              z = trt.pred)))#,score=itrtest(dat.new, trt.pred, n0=n0, AIPWE))
   return(out)
 }
