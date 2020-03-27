@@ -1,15 +1,12 @@
 Package: mvITR
 Type: Package
-Title: Discovery of multivariate ITR
+Title: Discovery of risk controlled individualized treatment rules (ITRs)
 Version: 1.0
-Date: 2019-02-06
+Date: 2020-03-26
 Author: Kevin Doubleday
-Maintainer: Kevin Doubleday <your@email.com>
-Description: One paragraph description of what the
-     package does as one or more full sentences.
+Maintainer: Kevin Doubleday <kdoub5ha@gmail.com>
+Description: This R package is to be used for discovery of personalized treatment regimes where the objective is to optimize a benefit (efficacy) while controlling risk at a pre-specified threshold. Both efficacy and risk endpoints must originate from continuous distributions with a binary treatment indicator. 
 License: GPL (>= 2)
-Imports: Rcpp
+Imports: Rcpp 
 LinkingTo: Rcpp
 RoxygenNote: 6.0.1.9000
-NeedsCompilation: yes
-Packaged: 2019-04-30 06:24:28 UTC; Elite-Intel
