@@ -5,6 +5,49 @@
 
 using namespace Rcpp;
 
+// SendDown
+Rcpp::List SendDown(NumericVector cutPoint, IntegerVector splitVar, NumericMatrix Data, StringVector treNodes, StringVector direction);
+RcppExport SEXP _mvITR_SendDown(SEXP cutPointSEXP, SEXP splitVarSEXP, SEXP DataSEXP, SEXP treNodesSEXP, SEXP directionSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type cutPoint(cutPointSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type splitVar(splitVarSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type treNodes(treNodesSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type direction(directionSEXP);
+    rcpp_result_gen = Rcpp::wrap(SendDown(cutPoint, splitVar, Data, treNodes, direction));
+    return rcpp_result_gen;
+END_RCPP
+}
+// estITR
+double estITR(List input);
+RcppExport SEXP _mvITR_estITR(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(estITR(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// estOpt
+List estOpt(NumericVector y, NumericVector r, NumericVector trt, NumericVector prtx, NumericVector rule, double tau, double lambda);
+RcppExport SEXP _mvITR_estOpt(SEXP ySEXP, SEXP rSEXP, SEXP trtSEXP, SEXP prtxSEXP, SEXP ruleSEXP, SEXP tauSEXP, SEXP lambdaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type r(rSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type trt(trtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type prtx(prtxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rule(ruleSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(estOpt(y, r, trt, prtx, rule, tau, lambda));
+    return rcpp_result_gen;
+END_RCPP
+}
 // splitConditional
 Rcpp::List splitConditional(NumericVector zcut, NumericMatrix zcutCat, List datMatrix, List parameters);
 RcppExport SEXP _mvITR_splitConditional(SEXP zcutSEXP, SEXP zcutCatSEXP, SEXP datMatrixSEXP, SEXP parametersSEXP) {
@@ -49,6 +92,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_mvITR_SendDown", (DL_FUNC) &_mvITR_SendDown, 5},
+    {"_mvITR_estITR", (DL_FUNC) &_mvITR_estITR, 1},
+    {"_mvITR_estOpt", (DL_FUNC) &_mvITR_estOpt, 7},
     {"_mvITR_splitConditional", (DL_FUNC) &_mvITR_splitConditional, 4},
     {"_mvITR_splitContinuous", (DL_FUNC) &_mvITR_splitContinuous, 4},
     {"_mvITR_splitSurvival", (DL_FUNC) &_mvITR_splitSurvival, 4},
