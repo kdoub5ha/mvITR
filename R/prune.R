@@ -29,7 +29,7 @@ prune <- function(tre,
                   AIPWE = FALSE, 
                   n0 = 5, 
                   ctgs = NULL, 
-                  risk.control = FALSE, 
+                  risk.control = TRUE, 
                   risk.threshold = NA,
                   lambda = lambda){
   
@@ -60,7 +60,7 @@ prune <- function(tre,
     subtrees[[subtree]] <- tre.in
     internal <- tre.in$node[!is.na(tre.in$cut.1)]
     l <- length(internal)
-    preds.tre.in <- predict.ITR(tre.in, train, split.vars)$trt.pred
+    preds.tre.in <- predict.ITR(tre.in, train, tre$split.var)$trt.pred
     L.tre.in <- estITR(list(y = train$y,
                             trt = train$trt, 
                             ae = train$r,
