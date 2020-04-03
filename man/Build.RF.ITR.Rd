@@ -2,48 +2,69 @@
 % Please edit documentation in R/Build.RF.ITR.R
 \name{Build.RF.ITR}
 \alias{Build.RF.ITR}
-\title{Builds the random forest of interaction trees}
+\title{Builds an rcRF model for risk controlled optimization}
 \usage{
-Build.RF.ITR(dat, split.var, test = NULL, col.y = "y", col.r = "r",
-  col.trt = "trt", col.prtx = "prtx", ctg = NULL, N0 = 20, n0 = 5,
-  max.depth = 10, ntree = 500, mtry = max(floor(length(split.var)/3), 1),
-  avoid.nul.tree = FALSE, AIPWE = FALSE, stabilize = TRUE,
-  stabilize.type = c("linear", "rf"), haoda.method = TRUE,
-  haoda.ae.level = NA, verbose = FALSE, reverse.ae.scale = FALSE,
-  use.other.nodes = TRUE, extremeRandomized = FALSE, lambda = 0)
+Build.RF.ITR(dat, split.var, efficacy = "y", risk = "r", col.trt = "trt",
+  col.prtx = "prtx", risk.control = TRUE, risk.threshold = NA,
+  lambda = 0, stabilize = TRUE, stabilize.type = c("linear", "rf"),
+  test = NULL, ctg = NULL, N0 = 20, n0 = 5, max.depth = 10,
+  ntree = 500, mtry = max(floor(length(split.var)/3), 1),
+  avoid.nul.tree = FALSE, AIPWE = FALSE, verbose = FALSE,
+  use.other.nodes = TRUE, extremeRandomized = FALSE)
 }
 \arguments{
-\item{dat}{the data set being used to grow the random forest. Required input.}
+\item{dat}{data.frame. Data used to construct rcRF model.
+Must contain efficacy variable (y), 
+risk variable (r), 
+binary treatment indicator coded as 0 / 1 (trt), 
+propensity score (prtx),
+candidate splitting covariates.}
 
-\item{split.var}{vector of columns containing the desired splitting variables.  Required input.}
+\item{split.var}{numeric vector. Columns of spliting variables.}
 
-\item{test}{indicator that determines if testing data is also run with each tree in the forest.  Defaults to FALSE.}
+\item{efficacy}{char. Efficacy outcome column. Defaults to 'y'.}
 
-\item{col.y}{the response variable. Required input.}
+\item{risk}{char. Risk outcome column. Defaults to 'r'.}
 
-\item{col.trt}{the treatment indicator.  Must be binary. Required input.}
+\item{col.trt}{char. Treatment column name}
 
-\item{col.prtx}{the probability of being assigned to treatment group. Required input.}
+\item{risk.control}{logical. Should risk be controlled? Defaults to TRUE.}
 
-\item{ctg}{identifies the categorical input columns.  Defaults to NA.  Not available yet.}
+\item{risk.threshold}{numeric. Desired level of risk control.}
 
-\item{N0}{minimum number of observations needed to call a node terminal.  Defaults to 20.}
+\item{lambda}{numeric. Penalty parameter for risk scores. Defaults to 0, i.e. no constraint.
 
-\item{n0}{minimum number of treatment/control observations needed in a split to call a node terminal. Defaults to 5.}
+Optional arguments}
 
-\item{max.depth}{controls the maximum depth of the tree. Defaults to 10.}
+\item{stabilize}{logical indicating if efficacy should be modeled using residuals. Defaults to TRUE.}
 
-\item{ntree}{sets the number of trees to be generated. Defaults to 500.}
+\item{stabilize.type}{character specifying method used for estimating residuals. Current options are 'linear' for linear model (default) and 'rf' for random forest.}
 
-\item{mtry}{sets the number of randomly selected splitting variables to be included. Defaults to max of length(split.var)/3 rounded down and 1.}
+\item{test}{data.frame of testing observations. Should be formatted the same as 'data'.}
 
-\item{avoid.nul.tree}{controls if trees with no splits (null trees) are allowed. Defaults to FALSE.}
+\item{ctg}{numeric vector corresponding to the categorical input columns.  Defaults to NULL.  Not available yet.}
 
-\item{AIPWE}{logical. Should AIPWE (TRUE) or IPWE (FALSE) be used.}
+\item{N0}{numeric specifying minimum number of observations required to call a node terminal. Defaults to 20.}
 
-\item{stabilize}{logical. Should a numerical stabilization be used. Can be random forest ('rf') or linear model ('linear')}
+\item{n0}{numeric specifying minimum number of treatment/control observations needed in a split to declare a node terminal. Defaults to 5.}
 
-\item{stabilize.type}{either 'rf' or 'linear' if stabilization requested.}
+\item{max.depth}{numeric specifying maximum depth of the tree. Defaults to 15 levels.}
+
+\item{ntree}{numeric. Number of trees generated. Defaults to 500.}
+
+\item{mtry}{numeric specifying the number of randomly selected splitting variables to be included. Defaults to number of splitting variables.}
+
+\item{avoid.nul.tree}{logical. Should null trees be discarded?}
+
+\item{AIPWE}{logical. Should AIPWE (TRUE) or IPWE (FALSE) be used. Not available yet.}
+
+\item{verbose}{logical. Give updates about forest progression?}
+
+\item{use.other.nodes}{logical. Should global estimator of objective function be used. Defaults to TRUE.}
+
+\item{extremeRandomized}{logical. Experimental for randomly selecting cutpoints in a random forest model. Defaults to FALSE and users should change this at their own peril.}
+
+\item{col.ptrx}{char. Propensity score column name.}
 }
 \value{
 A list of characteristics of the forest.
@@ -53,19 +74,19 @@ A list of characteristics of the forest.
 \item{TREES}{list of trees}
 
 \item{Model.Specification}{information about the input parameters of the forest}
+
+\item{...}{Summaries for in and out of bag samples}
 }
 \description{
-This function constructs a random forest of ITR trees using either the IPWE or AIPWE
-method. A forest object can be inputed into the `predict.ITR()` function along with data in order to 
-obtain treatment predictions. A forest object can also be given to the `Variable.Importance.ITR()` 
+This function constructs a random forest of rcDT trees method. 
+A forest object can be an argument into `predict.ITR()` along with data in order to 
+obtain treatment predictions. An output from this function can also be given to the `Variable.Importance.ITR()` 
 function to estimate predictor importance.
 }
 \examples{
-dat <- gdataM(n=1000, depth=2, beta1=3, beta2=1)
-# This builds a forest of 100 trees using the dataset called 'dat' with columns
-# 'y', 'trt', and 'prtx' for the outcome, treatement indicator, and probability of being
-# in treatment group, respectively.  The splitting variables are found in columns 1-4, 
-# and we chose to avoid null trees.
-forest<-Build.RF.ITR(dat=dat, col.y="y", col.trt="trt", col.prtx="prtx", 
-                     split.var=1:4, ntree=100, avoid.nul.tree=TRUE)
+dat <- generateData(n = 500)
+# Generates rcRF model using simualated data with splitting variables located in columns 1-10.
+fit <- Build.RF.ITR(dat = dat, split.var = 1:10, ntree = 200,
+                    risk.control = TRUE, risk.threshold = 2.75, 
+                    lambda = 1)
 }

@@ -2,39 +2,64 @@
 % Please edit documentation in R/grow.ITR.R
 \name{grow.ITR}
 \alias{grow.ITR}
-\title{Grows a large interaction tree}
+\title{Grows rcDT model}
 \usage{
-grow.ITR(data, split.var, test = NULL, ctg = NULL, efficacy = "y",
-  risk = "r", stabilize.type = c("linear", "rf"), min.ndsz = 20, n0 = 5,
-  mtry = length(split.var), max.depth = 15, AIPWE = FALSE,
-  stabilize = TRUE, haoda.method = FALSE, haoda.ae.level = NA,
-  reverse.ae.scale = FALSE, use.other.nodes = TRUE,
-  extremeRandomized = FALSE, lambda = 0)
+\method{grow}{ITR}(data, split.var, test = NULL, ctg = NULL,
+  efficacy = "y", risk = "r", col.trt = "trt", col.prtx = "prtx",
+  risk.control = TRUE, risk.threshold = NA, lambda = 0, min.ndsz = 20,
+  n0 = 5, stabilize = TRUE, stabilize.type = c("linear", "rf"),
+  use.other.nodes = TRUE, mtry = length(split.var), max.depth = 15,
+  AIPWE = FALSE, extremeRandomized = FALSE, print.summary = TRUE)
 }
 \arguments{
-\item{data}{data set from which the tree is to be grown.  Must contain outcome, binary 
-treatment indicator, columns of splitting covariates, and column of probability of being
-in treatment group.}
+\item{data}{data.frame. Data used to construct rcDT model.
+Must contain efficacy variable (y), 
+risk variable (r), 
+binary treatment indicator coded as 0 / 1 (trt), 
+propensity score (prtx),
+candidate splitting covariates.}
 
-\item{split.var}{columns of potential spliting variables. Required input.}
+\item{split.var}{numeric vector. Columns of spliting variables.}
 
-\item{test}{testing data}
+\item{test}{data.frame of testing observations. Should be formatted the same as 'data'.}
 
-\item{ctg}{identifies the categorical input columns.  Defaults to NULL.  Not available yet.}
+\item{ctg}{numeric vector corresponding to the categorical input columns.  Defaults to NULL.  Not available yet.}
 
-\item{stabilize.type}{gives the method used for calculating residuals. Current options are 'rf' for random forest and 'linear' for linear model.}
+\item{efficacy}{char. Efficacy outcome column. Defaults to 'y'.}
 
-\item{min.ndsz}{minimum number of observations required to call a node terminal. Defaults to 20.}
+\item{risk}{char. Risk outcome column. Defaults to 'r'.}
 
-\item{n0}{minimum number of treatment/control observations needed in a split to call a node terminal. Defaults to 5.}
+\item{col.trt}{char. Treatment indicator column name. Should be of form 0/1 or -1/+1.}
 
-\item{mtry}{sets the number of randomly selected splitting variables to be included. Defaults to number of splitting variables.}
+\item{col.prtx}{char. Propensity score column name.}
 
-\item{max.depth}{controls the maximum depth of the tree. Defaults to 15.}
+\item{risk.control}{logical. Should risk be controlled? Defaults to TRUE.}
 
-\item{AIPWE}{logical. Should AIPWE (TRUE) or IPWE (FALSE) be used.}
+\item{risk.threshold}{numeric. Desired level of risk control.}
 
-\item{in.forest}{logical for if the tree is being constructed in a forest. Should not be changed from defaults.}
+\item{lambda}{numeric. Penalty parameter for risk scores. Defaults to 0, i.e. no constraint.
+
+Optional arguments}
+
+\item{min.ndsz}{numeric specifying minimum number of observations required to call a node terminal. Defaults to 20.}
+
+\item{n0}{numeric specifying minimum number of treatment/control observations needed in a split to declare a node terminal. Defaults to 5.}
+
+\item{stabilize}{logical indicating if efficacy should be modeled using residuals. Defaults to TRUE.}
+
+\item{stabilize.type}{character specifying method used for estimating residuals. Current options are 'linear' for linear model (default) and 'rf' for random forest.}
+
+\item{use.other.nodes}{logical. Should global estimator of objective function be used. Defaults to TRUE.}
+
+\item{mtry}{numeric specifying the number of randomly selected splitting variables to be included. Defaults to number of splitting variables.}
+
+\item{max.depth}{numeric specifying maximum depth of the tree. Defaults to 15 levels.}
+
+\item{AIPWE}{logical. Should AIPWE (TRUE) or IPWE (FALSE) be used. Not available yet.}
+
+\item{extremeRandomized}{logical. Experimental for randomly selecting cutpoints in a random forest model. Defaults to FALSE and users should change this at their own peril.}
+
+\item{print.summary}{logical. Should a summary of the tree building be printed? Defaults to TRUE for single trees.}
 }
 \value{
 Summary of a single interaction tree. Each `node` begins with "0" indicating the root node, 
@@ -45,10 +70,12 @@ the direction the treatment is sent `cut.1` ("r" for right child node, and "l" f
 and the estimated value function `score`.
 }
 \description{
-This function grows an interaction tree using either the IPWE or AIPWE method (AIPWE=F, T).
+Main function in mvITR package. Constructs an rcDT model which maximizes an efficacy outcome (y) subject to #'              a risk constraint (r).
 }
 \examples{
-dat <- gdataM(n=1000, depth=2, beta1=3, beta2=1)
+dat <- generateData()
 # Generates tree using simualated EMR data with splitting variables located in columns 1-4.
-tree <- grow.ITR(data=dat, split.var=1:4)
+tree <- grow.ITR(data = dat, split.var = 1:10, 
+                 risk.control = TRUE, risk.threshold = 2.75, 
+                 lambda = 1)
 }

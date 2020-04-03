@@ -2,80 +2,97 @@
 % Please edit documentation in R/treeCV.R
 \name{treeCV}
 \alias{treeCV}
-\title{Performs k-fold cross validation for selection optimal tuning parameter lambda.}
+\title{Cross Validation for Optimal rcDT Model Selection for Given Penalty (lambda)}
 \usage{
-treeCV(tre, sp.var, dat, efficacy = "y", risk = "r", nfolds = 10,
-  param = NULL, AIPWE = FALSE, N0 = 20, n0 = 5, sort = TRUE,
+treeCV(dat, split.var, N0 = 20, n0 = 5, efficacy = "y", risk = "r",
+  col.trt = "trt", col.prtx = "prtx", lambda = 0, risk.control = FALSE,
+  risk.threshold = NA, nfolds = 10, AIPWE = FALSE, sort = TRUE,
   ctgs = NA, stabilize.type = c("linear", "rf"), stabilize = TRUE,
-  haoda.method = FALSE, haoda.ae.level = NA, use.other.nodes = TRUE,
-  use.bootstrap = FALSE, lambda = 0)
+  use.other.nodes = TRUE, use.bootstrap = FALSE,
+  extremeRandomized = FALSE)
 }
 \arguments{
-\item{tre}{original large tree from grow.ITR()}
+\item{dat}{data.frame. Data used to construct rcDT model.
+Must contain efficacy variable (y), 
+risk variable (r), 
+binary treatment indicator coded as 0 / 1 (trt), 
+propensity score (prtx),
+candidate splitting covariates.}
 
-\item{sp.var}{specifies the columns of splitting variables in the input data to grow the original tree.}
+\item{split.var}{numeric vector. Columns of spliting variables.}
 
-\item{dat}{data frame used to grow tre}
+\item{N0}{numeric specifying minimum number of observations required to call a node terminal. Defaults to 20.}
 
-\item{nfolds}{number of folds in the cross validation. Defaults to 10.}
+\item{n0}{numeric specifying minimum number of treatment/control observations needed in a split to declare a node terminal. Defaults to 5.}
 
-\item{param}{vector of numeric values to be considered as the tuning parameter. Defaults to seq(0, 0.15, 0.1) but should be modified for each specific problem.}
+\item{efficacy}{char. Efficacy outcome column. Defaults to 'y'.}
 
-\item{AIPWE}{logical indicating if the augmented estimator should be used. Defaults to FALSE.}
+\item{risk}{char. Risk outcome column. Defaults to 'r'.}
 
-\item{N0}{sets the minimal number of observations allowed in terminal nodes. Defaults to 20.}
+\item{col.trt}{char. Treatment indicator column name. Should be of form 0/1 or -1/+1.}
 
-\item{n0}{sets the minimum number of observations from each treatment group to be in each child node.  Defaults to 5.}
+\item{col.prtx}{char. Propensity score column name.}
 
-\item{sort}{logical indicating if data should be sorted before folds are created. Defaults to FALSE.}
+\item{lambda}{numeric. Penalty parameter for risk scores. Defaults to 0, i.e. no constraint.}
 
-\item{ctgs}{columns of categorical variables.}
+\item{risk.control}{logical. Should risk be controlled? Defaults to TRUE.}
 
-\item{stabilize.type}{Type of stabilization. 'rf' for random forests (default) or 'linear' for linear model.}
+\item{risk.threshold}{numeric. Desired level of risk control.}
 
-\item{stabilize}{logical. Should stabilization be used?}
+\item{AIPWE}{logical. Should AIPWE (TRUE) or IPWE (FALSE) be used. Not available yet.}
 
-\item{haoda.method}{logical if the conditional tree structure is being used}
+\item{sort}{internal use.}
 
-\item{haoda.ae.level}{value used if haoda.method is TRUE.}
+\item{stabilize.type}{character specifying method used for estimating residuals. Current options are 'linear' for linear model (default) and 'rf' for random forest.}
+
+\item{stabilize}{logical indicating if efficacy should be modeled using residuals. Defaults to TRUE.}
+
+\item{use.other.nodes}{logical. Should global estimator of objective function be used. Defaults to TRUE.}
+
+\item{use.bootstrap}{logical. Should a bootstrap resampling be done? Defaults to FALSE.}
+
+\item{extremeRandomized}{logical. Experimental for randomly selecting cutpoints in a random forest model. Defaults to FALSE and users should change this at their own peril. #' @return A summary of the cross validation including optimal penalty parameter and the optimal model.}
+
+\item{test}{data.frame of testing observations. Should be formatted the same as 'data'.}
+
+\item{max.depth}{numeric specifying maximum depth of the tree. Defaults to 15 levels.}
+
+\item{mtry}{numeric specifying the number of randomly selected splitting variables to be included. Defaults to number of splitting variables.}
+
+\item{ctg}{numeric vector corresponding to the categorical input columns.  Defaults to NULL.  Not available yet.}
 }
 \value{
-A summary of the cross validation including optimal penalty parameter and the optimal model.
+\item{best.tree.size}{optimal rcDT model based on size}
 
-\item{best.tree}{optimal ITR tree model}
+\item{best.tree.alpha}{optimal rcDT model based on alpha parameter selection}
 
-\item{best.lambda}{optimal lambda}
+\item{best.alpha}{optimal lambda parameter selected from the cross validation procedure}
 
-\item{full.tree}{original input tree}
+\item{full.tree}{unpruned tree}
 
-\item{pruned.tree}{pruning output given the optimal lambda}
+\item{pruned.tree}{output from pruning of `full.tree`}
 
 \item{data}{input data}
 
-\item{details}{summary of model performance for each lambda under consideration}
+\item{details}{summary of model performance}
+
+\item{subtrees}{sequence of optimally pruned subtrees of `full.tree`}
+
+\item{in.train}{training samples from splits}
+
+\item{in.test}{testing samples from splits}
 }
 \description{
-Performs k-fold cross validation for selection optimal tuning parameter lambda.
+Performs k-fold cross validation for rcDT model to 
+select the best subtree from the set of optimally pruned subtree generated from 
+`prune` function.
 }
 \examples{
 
 # Grow large tree
 set.seed(1)
-dat <- gdataM(n=1000, depth = 2, beta1=3, beta2=1)
-tre <- grow.ITR(dat, split.var = 1:4)
-
-# This tre should have 3 terminal nodes (correct size), but has 4 as grown.
-
-cv.prune <- treeCV(tre, dat, nfolds = 5, param = seq(0, 0.15, 0.01), sp.var = 1:4)
-
-# The best tree returned has the correct number of nodes
-cv.prune$best.tree
-#node size n.1 n.0 trt.effect var vname cut.1 cut.2  score
-#1    0 1000 479 521  1.2936724   1    X1     r  0.28 0.8768
-#2   01  277  86 191 -0.9439306  NA  <NA>  <NA>  <NA>     NA
-#3   02  723 393 330  2.0819738   3    X3     r   0.1 0.9426
-#5  021   78   9  69 -1.3600766  NA  <NA>  <NA>  <NA>     NA
-#4  022  645 384 261  2.4226122  NA  <NA>  <NA>  <NA>     NA
-
+dat <- generateData()
+fit <- treeCV(dat, split.var = 1:10, nfolds = 5, lambda = 1,
+                 risk.control = TRUE, risk.threshold = 2.75)
 
 }

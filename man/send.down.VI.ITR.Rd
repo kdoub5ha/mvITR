@@ -4,7 +4,7 @@
 \alias{send.down.VI.ITR}
 \title{Sends testing data and permuted testing data down a bootstrap tree from a forest object.}
 \usage{
-send.down.VI.ITR(dat.new, tre, col.y, col.r, col.trt, col.prtx, haoda.ae.level,
+send.down.VI.ITR(dat.new, tre, col.y, col.r, col.trt, col.prtx, risk.threshold,
   lambda, ctg = NULL, n0 = n0, N0 = N0, revise.tree = T, depth = 1,
   AIPWE = AIPWE)
 }

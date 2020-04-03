@@ -2,10 +2,10 @@
 % Please edit documentation in R/prune.R
 \name{prune}
 \alias{prune}
-\title{Prunes a tree for a given penalty value}
+\title{Prunes an rcDT model}
 \usage{
 prune(tre, a, test = NULL, AIPWE = FALSE, n0 = 5, ctgs = NULL,
-  haoda.method = FALSE, haoda.ae.level = NA, lambda = lambda)
+  risk.control = FALSE, risk.threshold = NA, lambda = lambda)
 }
 \arguments{
 \item{tre}{sets the tree to be pruned}
@@ -30,6 +30,8 @@ iteration of the pruning algorithm; `size.tree` and `n.tmnl` give number of tota
 terminal nodes in each subtree; `alpha` is the weakest link scoring criteria; `V` and `V.test`
 are the overall value of the tree for the training and tesing samples; `V.a` and `Va.test`
 give the penalized value for the training and testing samples.}
+
+\item{subtrees}{list of optimally pruned subtrees of `tre`}
 }
 \description{
 The `prune` function allows the user to specify a value of the penalty for a given tree. 

@@ -2,14 +2,16 @@
 % Please edit documentation in R/predict.ITR.R
 \name{predict.ITR}
 \alias{predict.ITR}
-\title{Treatment Prediction Function}
+\title{Treatment Prediction for rcDT and rcRF Models}
 \usage{
-predict.ITR(input, new.dat, split.var, ctgs = NULL)
+\method{predict}{ITR}(fit, new.data, split.var, ctgs = NULL)
 }
 \arguments{
-\item{input}{tree or forest object from `grow.ITR` or `Build.RF.ITR`.}
+\item{fit}{tree or forest object from `grow.ITR` or `Build.RF.ITR`.}
 
-\item{new.dat}{data for which predictions are desired}
+\item{new.data}{data for which predictions are desired}
+
+\item{split.var}{splitting variables from the model fit}
 
 \item{ctgs}{columns of categorical variables.}
 }
@@ -17,28 +19,30 @@ predict.ITR(input, new.dat, split.var, ctgs = NULL)
 A summary list of the following elements:
 
 \item{SummaryTreat}{proportion of trees voting for treatment (trt=1). 
-If input is a single tree then SummaryTreat is a single number. 
-If input is a forest then SummaryTreat is a vector equal to the length of the number of trees.}
+If input is rcDT (single tree) then SummaryTreat is a single number. 
+If input is rcRF (forest) then SummaryTreat is a vector equal to the length of the number of trees.}
 
-\item{trt.pred}{vector of treatment assignments {0, 1} based on the tree vote (single tree) or majority of tree votes (forest). This vector has length equal to the number of rows in `new.dat`.}
+\item{trt.pred}{vector of treatment assignments {0, 1} based on the tree vote (single tree) or majority of tree votes (forest). This vector has length equal to the number of rows in `new.data`.}
 
-\item{n.trees}{number of tree in `input`}
+\item{n.trees}{number of tree in `fit`}
 
-\item{tree.votes}{matrix of votes for each tree for each subject in `new.dat`. Rows correspond to trees in `input` and columns correspond to subjects in `new.dat`.}
+\item{tree.votes}{matrix of votes for each tree for each subject in `new.data`. Rows correspond to trees in `fit` and columns correspond to subjects in `new.dat`.}
 
-\item{data}{input data frame `new.dat`}
+\item{data}{input data frame `new.data`}
 
 \item{NA.trees}{number of trees returning no votes. In a forest, this is the number of null trees.}
 }
 \description{
-Used to make treatment prediction for a single tree or random forest. If the 
-input is a forest, then the proportion of trees voting for treatment (`trt=1`) is returned. 
-If the input is a single tree, then the function returns the vote (treatment or control) from the tree.
+Used to make treatment prediction for a rcDT and rcRF models. If the 
+input is rcRF (forest), then the proportion of trees voting for treatment (`trt=1`) is returned. 
+If the input is rcDT (single tree), then the function returns the vote (0 / 1) for the model.
 }
 \examples{
-dat <- gdataM(n=1000, depth=2, beta1=3, beta2=1)
-# Build a forest with 100 trees
-forest <- Build.RF.ITR(dat, col.y="y", col.trt="trt", col.prtx="prtx", split.var=1:4, ntree=100)
+dat <- generateData()
+# Generates rcDT using simualated data with splitting variables located in columns 1-10.
+tree <- grow.ITR(data = dat, split.var = 1:10, 
+                 risk.control = TRUE, risk.threshold = 2.75, 
+                 lambda = 1)
 # Predict treatment assignments for 1000 observations in `dat`
-predict.ITR(forest, dat)
+preds <- predict.ITR(fit = tree, new.data = dat, split.var = 1:10)
 }

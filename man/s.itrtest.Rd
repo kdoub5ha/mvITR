@@ -2,7 +2,7 @@
 % Please edit documentation in R/s.itrtest.R
 \name{s.itrtest}
 \alias{s.itrtest}
-\title{Value function used for treatment assignment value calculation.}
+\title{Estimates value for survival data (currently experimental)}
 \usage{
 s.itrtest(dat, z, n0, aug)
 }
@@ -19,7 +19,7 @@ s.itrtest(dat, z, n0, aug)
 ITR value from the new treatment assignments
 }
 \description{
-This function is used inside the tree growing functions.
+This function is used inside the rcDT construction functions.
 }
 \examples{
 dat <- gdataM(n=1000, depth=2, beta1=3, beta2=1)

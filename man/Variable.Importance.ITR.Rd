@@ -5,7 +5,7 @@
 \title{Calcuates variable importance measures for a random forest object.}
 \usage{
 Variable.Importance.ITR(RF.fit, n0 = 5, N0 = 20, sort = TRUE,
-  details = FALSE, truncate.zeros = TRUE, depth = 1, AIPWE = FALSE)
+  details = FALSE, depth = 1, AIPWE = FALSE)
 }
 \arguments{
 \item{RF.fit}{forest object from Build.RF.ITR. Required input.}
@@ -18,14 +18,13 @@ Variable.Importance.ITR(RF.fit, n0 = 5, N0 = 20, sort = TRUE,
 
 \item{details}{print details of each tree as the function progresses. Defaults to FALSE.}
 
-\item{truncate.zeros}{sets variable importances less than 0 to 0. Defaults to TRUE.}
-
 \item{depth}{internal variable.}
 
 \item{AIPWE}{indicator for AIPWE estimation.}
 }
 \value{
-Returns ordered variable importance measure calculated for each splitting variable.
+Returns list of total (VI), efficacy (VI.Efficacy), and risk (VI.Risk) 
+        ordered variable importance measure calculated for each splitting variable.
 }
 \description{
 This function accepts a forest object from the `Build.RF.ITR` function and estimates the importance of each
@@ -36,11 +35,10 @@ returns the variables in order of importance along with the importance measure, 
 }
 \examples{
 set.seed(1)
-dat <- gdataM(n = 1000, depth = 2, beta1 = 3, beta2 = 1)
+dat <- generateData(n = 500)
 # Build a forest with 100 trees
-forest <- Build.RF.ITR(dat, col.y="y", col.trt="trt", col.prtx="prtx", split.var=1:4, ntree=100)
-# Calculate variable importance measures (X1 and X3 should be returned as the most important)
- Variable.Importance.ITR(forest)
-# X1          X3          X4          X2 
-# 0.727854671 0.260080262 0.009528276 0.002536791 
+fit <- Build.RF.ITR(dat = dat, split.var = 1:10, ntree = 200,
+                    risk.control = TRUE, risk.threshold = 2.75, 
+                    lambda = 1)
+VI <- Variable.Importance.ITR(fit)
 }

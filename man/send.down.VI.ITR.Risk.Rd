@@ -5,7 +5,7 @@
 \title{Sends testing data and permuted testing data down a bootstrap tree from a forest object.}
 \usage{
 send.down.VI.ITR.Risk(dat.new, tre, col.y, col.r, col.trt, col.prtx,
-  haoda.ae.level, lambda, ctg = NULL, n0 = n0, N0 = N0, revise.tree = T,
+  risk.threshold, lambda, ctg = NULL, n0 = n0, N0 = N0, revise.tree = T,
   depth = 1, AIPWE = AIPWE)
 }
 \arguments{
