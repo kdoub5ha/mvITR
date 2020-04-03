@@ -6,10 +6,10 @@
   Discovery of multivariate ITR.
 }
 \description{
-  This package can be used for discovery of multivariate ITR using both continuous and survival outcomes. Two main functions are provided which discover ITR via a conditional splitting algorithm or a sequential splitting algorithm.
+  This package can be used for discovery of risk controlled individualized treatment rules (ITRs) via risk controlled decision trees (rcDT) or risk controlled random forests (rcRF).
 }
 \details{
-  Use the grow.ITR() and grow.MVITR() functions for ITR discovery. 
+  Use the grow.ITR() and Build.RF.ITR() functions for risk controITR discovery. 
 }
 \author{
 Kevin Doubleday, kdoub5ha@gmail.com.
