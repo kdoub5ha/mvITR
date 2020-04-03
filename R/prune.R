@@ -1,4 +1,4 @@
-#' @title Prunes a tree for a given penalty value
+#' @title Prunes an rcDT model 
 #' 
 #' @description The `prune` function allows the user to specify a value of the penalty for a given tree. 
 #' This function uses the "weakest link" criteria in order to evaluate the order in which branches are pruned
@@ -18,6 +18,7 @@
 #' terminal nodes in each subtree; `alpha` is the weakest link scoring criteria; `V` and `V.test`
 #' are the overall value of the tree for the training and tesing samples; `V.a` and `Va.test`
 #' give the penalized value for the training and testing samples.}
+#' @return \item{subtrees}{list of optimally pruned subtrees of `tre`}
 #' @export
 #' 
 
@@ -28,8 +29,8 @@ prune <- function(tre,
                   AIPWE = FALSE, 
                   n0 = 5, 
                   ctgs = NULL, 
-                  haoda.method = FALSE, 
-                  haoda.ae.level = NA,
+                  risk.control = FALSE, 
+                  risk.threshold = NA,
                   lambda = lambda){
   
   tre.in <- tre$tree
@@ -49,7 +50,7 @@ prune <- function(tre,
   subtrees <- vector("list")
   subtree <- 1
   result <- data.frame()
-  if(haoda.method){
+  if(risk.control){
     tmp.v.ae <- vector("numeric")
     tmp.v.ae.test <- vector("numeric") 
   }
@@ -60,11 +61,16 @@ prune <- function(tre,
     internal <- tre.in$node[!is.na(tre.in$cut.1)]
     l <- length(internal)
     preds.tre.in <- predict.ITR(tre.in, train, split.vars)$trt.pred
-    L.tre.in <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
-                            maxRisk = haoda.ae.level,
-                            prtx = train$prtx, status = train$status, 
-                            lambda = lambda, KM.cens = train$KM.cens, 
-                            n0 = 0, z = preds.tre.in))
+    L.tre.in <- estITR(list(y = train$y,
+                            trt = train$trt, 
+                            ae = train$r,
+                            maxRisk = risk.threshold,
+                            prtx = train$prtx, 
+                            status = train$status, 
+                            lambda = lambda, 
+                            KM.cens = train$KM.cens, 
+                            n0 = 0, 
+                            z = preds.tre.in))
     
     #r.value is the vector of mean score values across all splits
     r.value <- 
@@ -77,30 +83,37 @@ prune <- function(tre,
         
         if(nrow(tmp) > 1){
           trt.pred <- predict.ITR(tmp, train, tre$split.var, ctgs = ctgs)$trt.pred
-          # score <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
-          #                      prtx = train$prtx, status = train$status, 
-          #                      KM.cens = train$KM.cens, n0 = 5, z = trt.pred,
-          #                      lambda = lambda, maxRisk = haoda.ae.level))
-          # 
           ae.score <- mean(train$r * (train$trt == trt.pred) / train$prtx)
           y.score <- mean(train$y * (train$trt == trt.pred) / train$prtx)
-          score <- estITR(list(y = train$y, trt = train$trt, ae = train$r,
-                               maxRisk = haoda.ae.level,
-                               prtx = train$prtx, status = train$status, 
-                               lambda = lambda, KM.cens = train$KM.cens, 
-                               n0 = 0, z = trt.pred))
+          score <- estITR(list(y = train$y, 
+                               trt = train$trt,
+                               ae = train$r,
+                               maxRisk = risk.threshold,
+                               prtx = train$prtx, 
+                               status = train$status, 
+                               lambda = lambda,
+                               KM.cens = train$KM.cens, 
+                               n0 = 0, 
+                               z = trt.pred))
         }else{
           scores <- sapply(0:1, function(iii)
-            estITR(list(y = train$y, trt = train$trt, ae = train$r, maxRisk = haoda.ae.level,
-                        prtx = train$prtx, status = train$status, lambda = lambda,
-                        KM.cens = train$KM.cens, n0 = 0, z = rep(iii, nrow(train)))))
+            estITR(list(y = train$y, 
+                        trt = train$trt, 
+                        ae = train$r, 
+                        maxRisk = risk.threshold,
+                        prtx = train$prtx,
+                        status = train$status, 
+                        lambda = lambda,
+                        KM.cens = train$KM.cens, 
+                        n0 = 0, 
+                        z = rep(iii, nrow(train)))))
           idx.scores <- which.max(scores)
           score <- scores[idx.scores]
           ae.score <- mean(train$r * (train$trt == rep(idx.scores-1, nrow(train))) / train$prtx)
           y.score <- mean(train$y * (train$trt == rep(idx.scores-1, nrow(train))) / train$prtx)
         }
         
-        if(!haoda.method){
+        if(!risk.control){
           return(score / sum(!is.na(tmp$var)))
         } else{
           # return(c(y = score / sum(!is.na(tmp)), r = ae.score))
@@ -112,20 +125,20 @@ prune <- function(tre,
       })
 
     if(nrow(tre.in) > 1){
-      if(!haoda.method){
+      if(!risk.control){
         alpha <- max(r.value, na.rm = TRUE)
       } else{
         alpha <- max(r.value["y",], na.rm = TRUE)
         r.value <- as.numeric(r.value["y",])
       }
     } else{
-      if(!haoda.method){
+      if(!risk.control){
         alpha <- max(r.value[-1], na.rm = TRUE)
       } else{
         # alpha <- max(r.value["y",], na.rm = TRUE)
         
-        if(sum(r.value["r",] <= haoda.ae.level) > 0){
-          risk.idx <- (r.value["r",] <= haoda.ae.level)
+        if(sum(r.value["r",] <= risk.threshold) > 0){
+          risk.idx <- (r.value["r",] <= risk.threshold)
           max.order.y <- rank(r.value["y",])
           max.order.r <- rank(r.value["r",])
           tmp.alpha <- as.matrix(cbind(t(r.value), risk.idx, 
@@ -160,7 +173,7 @@ prune <- function(tre,
       V.test <- estITR(list(y = .subset2(test, 'y'), 
                             trt = .subset2(test, 'trt'), 
                             ae = .subset2(test, 'r'), 
-                            maxRisk = haoda.ae.level,
+                            maxRisk = risk.threshold,
                             prtx = .subset2(test, 'prtx'),
                             status = .subset2(test, 'status'),
                             lambda = lambda,
@@ -176,14 +189,26 @@ prune <- function(tre,
     # Calculate value for testing data
     if(is.null(test)){
       result <- rbind(result, 
-                      data.frame(subtree = subtree, node.rm = nod.rm, size.tree = nrow(tre.in),
-                                 size.tmnl = nrow(tre.in)-l, alpha = alpha, V = V, V.a = V.a, 
-                                 V.test = NA, Va.test = NA))
+                      data.frame(subtree = subtree, 
+                                 node.rm = nod.rm, 
+                                 size.tree = nrow(tre.in),
+                                 size.tmnl = nrow(tre.in)-l, 
+                                 alpha = alpha, 
+                                 V = V, 
+                                 V.a = V.a, 
+                                 V.test = NA,
+                                 Va.test = NA))
     }else{
       result <- rbind(result, 
-                      data.frame(subtree = subtree, node.rm = nod.rm, size.tree = nrow(tre.in), 
-                                 size.tmnl = nrow(tre.in)-l, alpha = alpha, V = V, V.a = V.a, 
-                                 V.test = V.test, Va.test = Va.test))
+                      data.frame(subtree = subtree,
+                                 node.rm = nod.rm, 
+                                 size.tree = nrow(tre.in), 
+                                 size.tmnl = nrow(tre.in)-l, 
+                                 alpha = alpha, 
+                                 V = V, 
+                                 V.a = V.a, 
+                                 V.test = V.test,
+                                 Va.test = Va.test))
     }
     
     if(length(nod.rm) > 1){
@@ -213,28 +238,47 @@ prune <- function(tre,
   
   # HANDLE THE NULL TREE WITH THE ROOT NODE ONLY
   tmp.train.v <- max(sapply(0:1, function(iii) 
-    estITR(list(y = train$y, trt = train$trt, ae = train$r, maxRisk = haoda.ae.level,
-                prtx = train$prtx, status = train$status, lambda = lambda,
-                KM.cens = train$KM.cens, n0 = 0, z = rep(iii, nrow(train))))))
+    estITR(list(y = train$y,
+                trt = train$trt,
+                ae = train$r,
+                maxRisk = risk.threshold,
+                prtx = train$prtx, 
+                status = train$status, 
+                lambda = lambda,
+                KM.cens = train$KM.cens,
+                n0 = 0, 
+                z = rep(iii, nrow(train))))))
   if(!is.null(test)){
     tmp.test.v <- max(sapply(0:1, function(iii) 
-      estITR(list(y = test$y, trt = test$trt, ae = test$r, maxRisk = haoda.ae.level,
-                  prtx = test$prtx, status = test$status, lambda = lambda,
-                  KM.cens = test$KM.cens, n0 = 0, z = rep(iii, nrow(test))))))
-    result <- rbind(result, cbind(subtree=subtree, node.rm='NA',
+      estITR(list(y = test$y,
+                  trt = test$trt, 
+                  ae = test$r,
+                  maxRisk = risk.threshold,
+                  prtx = test$prtx, 
+                  status = test$status,
+                  lambda = lambda,
+                  KM.cens = test$KM.cens, 
+                  n0 = 0, 
+                  z = rep(iii, nrow(test))))))
+    result <- rbind(result, cbind(subtree=subtree,
+                                  node.rm='NA',
                                   size.tree=nrow(tre.in), 
-                                  size.tmnl=1, alpha=9999, 
+                                  size.tmnl=1, 
+                                  alpha=9999, 
                                   V = tmp.train.v, 
                                   V.a = tmp.train.v, 
                                   V.test = tmp.test.v, 
                                   Va.test = tmp.test.v))
   } else{
-    result <- rbind(result, cbind(subtree=subtree, node.rm='NA', 
+    result <- rbind(result, cbind(subtree=subtree, 
+                                  node.rm='NA', 
                                   size.tree=nrow(tre.in), 
-                                  size.tmnl=1, alpha=9999, 
+                                  size.tmnl=1, 
+                                  alpha=9999, 
                                   V = tmp.train.v, 
                                   V.a = tmp.train.v, 
-                                  V.test=NA, Va.test=NA))    
+                                  V.test=NA, 
+                                  Va.test=NA))    
   }
   
   if(mean(train$y * train$trt / train$prtx) >  
@@ -251,7 +295,7 @@ prune <- function(tre,
   
   result <- as.data.frame(result)
   result <- result[!duplicated(result),]
-  if(haoda.method){
+  if(risk.control){
     out <- list(result = result, subtrees = subtrees)#, v.ae = tmp.v.ae)
     # out$v.ae.test <- tmp.v.ae.test
   } else{

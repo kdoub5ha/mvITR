@@ -1,6 +1,6 @@
-#' @title Value function used for treatment assignment value calculation.  
+#' @title Estimates value for survival data (currently experimental)
 #' 
-#' @description This function is used inside the tree growing functions.  
+#' @description This function is used inside the rcDT construction functions.  
 #' 
 #' @param dat dataset being assessed 
 #' @param z new (alternative) treatment assignment in the splitting procedure.  

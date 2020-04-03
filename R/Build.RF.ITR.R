@@ -1,49 +1,67 @@
-#' @title Builds the random forest of interaction trees
+#' @title Builds an rcRF model for risk controlled optimization
 #' 
-#' @description This function constructs a random forest of ITR trees using either the IPWE or AIPWE
-#' method. A forest object can be inputed into the `predict.ITR()` function along with data in order to 
-#' obtain treatment predictions. A forest object can also be given to the `Variable.Importance.ITR()` 
+#' @description This function constructs a random forest of rcDT trees method. 
+#' A forest object can be an argument into `predict.ITR()` along with data in order to 
+#' obtain treatment predictions. An output from this function can also be given to the `Variable.Importance.ITR()` 
 #' function to estimate predictor importance. 
 #' 
-#' @param dat the data set being used to grow the random forest. Required input. 
-#' @param col.y the response variable. Required input. 
-#' @param col.trt the treatment indicator.  Must be binary. Required input.
-#' @param col.prtx the probability of being assigned to treatment group. Required input. 
-#' @param split.var vector of columns containing the desired splitting variables.  Required input. 
-#' @param ctg identifies the categorical input columns.  Defaults to NA.  Not available yet. 
-#' @param N0 minimum number of observations needed to call a node terminal.  Defaults to 20. 
-#' @param n0 minimum number of treatment/control observations needed in a split to call a node terminal. Defaults to 5. 
-#' @param test indicator that determines if testing data is also run with each tree in the forest.  Defaults to FALSE. 
-#' @param max.depth controls the maximum depth of the tree. Defaults to 10. 
-#' @param mtry sets the number of randomly selected splitting variables to be included. Defaults to max of length(split.var)/3 rounded down and 1.
-#' @param AIPWE logical. Should AIPWE (TRUE) or IPWE (FALSE) be used. 
-#' @param ntree sets the number of trees to be generated. Defaults to 500.
-#' @param avoid.nul.tree controls if trees with no splits (null trees) are allowed. Defaults to FALSE.
-#' @param stabilize logical. Should a numerical stabilization be used. Can be random forest ('rf') or linear model ('linear')
-#' @param stabilize.type either 'rf' or 'linear' if stabilization requested.
+#' @param dat data.frame. Data used to construct rcRF model.  
+#' Must contain efficacy variable (y), 
+#' risk variable (r), 
+#' binary treatment indicator coded as 0 / 1 (trt), 
+#' propensity score (prtx),
+#' candidate splitting covariates.
+#' @param split.var numeric vector. Columns of spliting variables.
+#' @param efficacy char. Efficacy outcome column. Defaults to 'y'.
+#' @param risk char. Risk outcome column. Defaults to 'r'.
+#' @param col.trt char. Treatment column name
+#' @param col.ptrx char. Propensity score column name.
+#' @param risk.control logical. Should risk be controlled? Defaults to TRUE.
+#' @param risk.threshold numeric. Desired level of risk control. 
+#' @param lambda numeric. Penalty parameter for risk scores. Defaults to 0, i.e. no constraint.
+#' 
+#' Optional arguments
+#' @param test data.frame of testing observations. Should be formatted the same as 'data'.
+#' @param N0 numeric specifying minimum number of observations required to call a node terminal. Defaults to 20.
+#' @param n0 numeric specifying minimum number of treatment/control observations needed in a split to declare a node terminal. Defaults to 5. 
+#' @param max.depth numeric specifying maximum depth of the tree. Defaults to 15 levels. 
+#' @param mtry numeric specifying the number of randomly selected splitting variables to be included. Defaults to number of splitting variables.
+#' @param ntree numeric. Number of trees generated. Defaults to 500.
+#' @param stabilize logical indicating if efficacy should be modeled using residuals. Defaults to TRUE. 
+#' @param stabilize.type character specifying method used for estimating residuals. Current options are 'linear' for linear model (default) and 'rf' for random forest. 
+#' @param use.other.nodes logical. Should global estimator of objective function be used. Defaults to TRUE. 
+#' @param ctg numeric vector corresponding to the categorical input columns.  Defaults to NULL.  Not available yet. 
+#' @param avoid.nul.tree logical. Should null trees be discarded?
+#' @param verbose logical. Give updates about forest progression?
+#' @param AIPWE logical. Should AIPWE (TRUE) or IPWE (FALSE) be used. Not available yet. 
+#' @param extremeRandomized logical. Experimental for randomly selecting cutpoints in a random forest model. Defaults to FALSE and users should change this at their own peril. 
 #' @return A list of characteristics of the forest.
 #' @return \item{ID.Boots.Samples}{list of bootstrap sample IDs}
 #' @return \item{TREES}{list of trees}
 #' @return \item{Model.Specification}{information about the input parameters of the forest}
+#' @return \item{...}{Summaries for in and out of bag samples}
 #' @import randomForest
 #' @export
 #' @examples
-#' dat <- gdataM(n=1000, depth=2, beta1=3, beta2=1)
-#' # This builds a forest of 100 trees using the dataset called 'dat' with columns
-#' # 'y', 'trt', and 'prtx' for the outcome, treatement indicator, and probability of being
-#' # in treatment group, respectively.  The splitting variables are found in columns 1-4, 
-#' # and we chose to avoid null trees.
-#' forest<-Build.RF.ITR(dat=dat, col.y="y", col.trt="trt", col.prtx="prtx", 
-#'                      split.var=1:4, ntree=100, avoid.nul.tree=TRUE)
+#' dat <- generateData(n = 500)
+#' # Generates rcRF model using simualated data with splitting variables located in columns 1-10.
+#' fit <- Build.RF.ITR(dat = dat, split.var = 1:10, ntree = 200,
+#'                     risk.control = TRUE, risk.threshold = 2.75, 
+#'                     lambda = 1)
 
 
 Build.RF.ITR <- function(dat, 
                          split.var, 
-                         test = NULL, 
-                         col.y = "y",
-                         col.r = "r",
+                         efficacy = "y",
+                         risk = "r",
                          col.trt = "trt", 
                          col.prtx = "prtx", 
+                         risk.control = TRUE, 
+                         risk.threshold = NA, 
+                         lambda = 0,
+                         stabilize = TRUE, 
+                         stabilize.type = c('linear', 'rf'), 
+                         test = NULL, 
                          ctg = NULL,
                          N0 = 20, 
                          n0 = 5,  
@@ -52,15 +70,9 @@ Build.RF.ITR <- function(dat,
                          mtry = max(floor(length(split.var)/3), 1),
                          avoid.nul.tree = FALSE, 
                          AIPWE = FALSE, 
-                         stabilize = TRUE, 
-                         stabilize.type = c('linear', 'rf'), 
-                         haoda.method = TRUE, 
-                         haoda.ae.level = NA, 
                          verbose = FALSE, 
-                         reverse.ae.scale = FALSE, 
                          use.other.nodes = TRUE, 
-                         extremeRandomized = FALSE,
-                         lambda = 0)
+                         extremeRandomized = FALSE)
 {
   require(randomForest)
   out <- as.list(NULL)
@@ -86,8 +98,8 @@ Build.RF.ITR <- function(dat,
   
   # set inputs
   stabilize.type <- match.arg(stabilize.type)
-  if(haoda.method){
-    if(is.na(haoda.ae.level)) stop("Risk allowance level must be specified numeric")
+  if(risk.control){
+    if(is.na(risk.threshold)) stop("Risk allowance level must be specified numeric")
   }
   
   # set parameters for splitting criteria
@@ -99,18 +111,26 @@ Build.RF.ITR <- function(dat,
     dat.test <- dat[-unique(id.b),]
     
     # Generate tree based on b-th bootstrap sample
-    seed <- sample.int(100000, 1)
-    set.seed(seed)
-    
-    tre.b <- grow.ITR(data = dat.b, test = test, min.ndsz = N0, n0 = n0, 
-                      split.var = split.var, ctg = ctg, max.depth = max.depth, 
-                      AIPWE = AIPWE, mtry = mtry,
-                      efficacy = col.y, risk = col.r, stabilize = stabilize,
-                      haoda.method = haoda.method, stabilize.type = stabilize.type,
-                      haoda.ae.level = haoda.ae.level, 
+    tre.b <- grow.ITR(data = dat.b, 
+                      split.var = split.var, 
+                      test = test, 
+                      min.ndsz = N0, 
+                      n0 = n0, 
+                      efficacy = efficacy, 
+                      risk = risk, 
+                      col.trt = col.trt,
+                      col.prtx = col.prtx,
+                      lambda = lambda,
+                      risk.control = risk.control, 
+                      risk.threshold = risk.threshold, 
+                      stabilize = stabilize,
+                      stabilize.type = stabilize.type,
+                      ctg = ctg, 
+                      max.depth = max.depth, 
+                      AIPWE = AIPWE, 
+                      mtry = mtry,
                       use.other.nodes = use.other.nodes, 
-                      extremeRandomized = extremeRandomized, 
-                      lambda = lambda)
+                      extremeRandomized = extremeRandomized)
     
     if(avoid.nul.tree) {
       if(nrow(tre.b$tree) > 1) {
@@ -121,13 +141,9 @@ Build.RF.ITR <- function(dat,
     } else {
       out$ID.Boots.Samples[[b]] <- id.b
       out$TREES[[b]] <- tre.b$tree
-      out$AEfit[[b]] <- tre.b$fit.ae
       if(nrow(tre.b$tree) > 1){
         preds <- predict.ITR(tre.b$tree, dat, split.var)$trt.pred
         inbag.idx <- seq_along(1:nrow(dat)) %in% unique(id.b)
-        # tmp.risk.oob <- mean(dat[!inbag.idx,col.r] * (dat[!inbag.idx,col.trt] == preds[!inbag.idx]) / dat[!inbag.idx,col.prtx])
-        # tmp.risk.inbag <- mean(dat[inbag.idx,col.r] * (dat[inbag.idx,col.trt] == preds[inbag.idx]) / dat[inbag.idx,col.prtx])
-        
         out$preds.oob[,b] <- ifelse(inbag.idx, NA, preds)
         out$preds.inbag[,b] <- ifelse(inbag.idx, preds, NA)
       }
@@ -135,10 +151,10 @@ Build.RF.ITR <- function(dat,
       out$preds.cumulative.inbag[,b] <- ifelse(rowMeans(out$preds.inbag[,1:b,drop=F], na.rm = T) > 0.5, 1, 0)
       
       if(b > 5){
-        out$value.inbag[b] <- mean(dat[,col.y] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
-        out$value.oob[b] <- mean(dat[,col.y] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
-        out$risk.inbag[b] <- mean(dat[,col.r] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
-        out$risk.oob[b] <- mean(dat[,col.r] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$value.inbag[b] <- mean(dat[,efficacy] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$value.oob[b] <- mean(dat[,efficacy] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$risk.inbag[b] <- mean(dat[,risk] * (out$preds.cumulative.inbag[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
+        out$risk.oob[b] <- mean(dat[,risk] * (out$preds.cumulative.oob[,b] == dat[,col.trt]) / dat[,col.prtx], na.rm = T)
       }
       
       if(!is.null(test)){
@@ -147,8 +163,8 @@ Build.RF.ITR <- function(dat,
         }
         if(b > 5){
           out$test.preds.cumulative[,b] <- ifelse(rowMeans(out$test.preds[,1:b,drop=F], na.rm = T) > 0.5, 1, 0)
-          out$test.value[b] <- mean(test[,col.y] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
-          out$test.risk[b] <- mean(test[,col.r] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
+          out$test.value[b] <- mean(test[,efficacy] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
+          out$test.risk[b] <- mean(test[risk] * (out$test.preds.cumulative[,b] == test[,col.trt]) / test[,col.prtx], na.rm = T)
         }
       }
       
@@ -163,12 +179,12 @@ Build.RF.ITR <- function(dat,
   Model.Specification$data <- dat
   Model.Specification$split.var <- split.var
   Model.Specification$ctg <- ctg
-  Model.Specification$col.y <- col.y
-  Model.Specification$col.r <- col.r
+  Model.Specification$efficacy <- efficacy
+  Model.Specification$risk <- risk
   Model.Specification$col.trt <- col.trt
   Model.Specification$col.prtx <- col.prtx
   Model.Specification$lambda <- lambda
-  Model.Specification$haoda.ae.level <- haoda.ae.level
+  Model.Specification$risk.threshold <- risk.threshold
   out$Model.Specification <- Model.Specification
   return(out)
 }
