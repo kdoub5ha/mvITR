@@ -250,7 +250,7 @@ treeCV <- function(dat,
     best.tree.alpha <- full.tre.prune$subtrees[[which.min(abs(as.numeric(full.tre.prune$result$alpha) - as.numeric(best.alpha2)))]]
   }
 
-  setNames(list(best.tree, best.tree.alpha, best.alpha, best.alpha2, input.tre, full.tre.prune$result, 
+  setNames(list(best.tree, best.tree.alpha, best.alpha, best.alpha2, tre, full.tre.prune$result, 
                 dat, result, full.tre.prune$subtrees, in.train, in.test), 
            c("best.tree.size", "best.tree.alpha", "best.alpha", "best.alpha2", "full.tree", 
              "pruned.tree", "data", "details", "subtrees", "in.train", "in.test"))
