@@ -100,11 +100,11 @@ treeCV <- function(dat,
   # Model residuals if requested
   # Shuffle data
   if(!use.bootstrap){
-    if(sort) input.dat <- input.dat[sample(1:nrow(input.dat), size = nrow(input.dat)),]
-    folds <- cut(seq(1,nrow(input.dat)), breaks = nfolds, labels = FALSE)
+    if(sort) dat <- dat[sample(1:nrow(dat), size = nrow(dat)),]
+    folds <- cut(seq(1,nrow(dat)), breaks = nfolds, labels = FALSE)
   } else{
-    if(sort) input.dat <- input.dat[sample(1:nrow(input.dat), size = nrow(input.dat)),]
-    folds <- lapply(1:nfolds, function(i) unique(sample(1:nrow(input.dat), nrow(input.dat), replace = TRUE)))
+    if(sort) dat <- dat[sample(1:nrow(dat), size = nrow(dat)),]
+    folds <- lapply(1:nfolds, function(i) unique(sample(1:nrow(dat), nrow(dat), replace = TRUE)))
   }
   
   in.train <- in.test <- trees <- list()
@@ -112,11 +112,11 @@ treeCV <- function(dat,
   # divide samples into training and testing based on n.folds specified
   for(k in 1:nfolds){
     if(!use.bootstrap){ # use traditional CV
-      in.train[[k]] <- input.dat[-which(folds==k,arr.ind=TRUE),]
-      in.test[[k]]  <- input.dat[which(folds==k,arr.ind=TRUE),]
+      in.train[[k]] <- dat[-which(folds==k,arr.ind=TRUE),]
+      in.test[[k]]  <- dat[which(folds==k,arr.ind=TRUE),]
     } else{
-      in.train[[k]] <- input.dat[folds[[k]],]
-      in.test[[k]] <- input.dat[-folds[[k]],]
+      in.train[[k]] <- dat[folds[[k]],]
+      in.test[[k]] <- dat[-folds[[k]],]
     }
   }
   
@@ -251,7 +251,7 @@ treeCV <- function(dat,
   }
 
   setNames(list(best.tree, best.tree.alpha, best.alpha, best.alpha2, input.tre, full.tre.prune$result, 
-                input.dat, result, full.tre.prune$subtrees, in.train, in.test), 
+                dat, result, full.tre.prune$subtrees, in.train, in.test), 
            c("best.tree.size", "best.tree.alpha", "best.alpha", "best.alpha2", "full.tree", 
              "pruned.tree", "data", "details", "subtrees", "in.train", "in.test"))
 }
