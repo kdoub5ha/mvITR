@@ -1,0 +1,241 @@
+---
+title: "mvITR-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{mvITR-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+require(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+library(mvITR)
+
+```
+
+# Introduction
+
+The package `mvITR` is an individualized treatment rule (ITR) discovery tool that estimates ITRs under a constrained optimization framework. The main functions are `grow.ITR()` and `Build.RF.ITR()`. The `grow.ITR()` function constructs a risk controlled decision tree (rcDT) and `Build.RF.ITR()` constructs a risk controlled random forest (rcRF). The aim of each model is to maximize an expected benefit (Y) while constraining risk (R) at a pre-determined threshold. Each model is constructed to optimize a Lagrangian objective function which takes the form, 
+$$
+L(d) = E(Y) - \lambda(E(R) - \tau).
+$$
+Here, $d$ is a treatment decision rule of the form $d(X): X \rightarrow A$ for predictors $X$ and treatments $A\in \{0,1\}$. $E(Y)$ and $E(R)$ are estimated using the so-called "value" function and correspond to the expected benefit and risk if rule $d$ were used. For example, the estimated value of treatment recommendation $d$ would be $$E(Y) =N^{-1} \sum_{i=1}^{N} \frac{\textbf{I}_{a_i=d(\textbf{x}_i)}}{\hat{p}(a_i|\textbf{x}_i)}y_i $$
+where $\textbf{x}_i$ is the covariate vector, $a_i$ is the original treatment assignment, $d(\textbf{x}_i)$ is the proposed treatment rule, and $\hat{p}(a_i|\textbf{x}_i)$ is the probability of receiving treatment given the covariates. The estimated ``value" associated with the risk outcome is simiarly estimated. The pre-determined risk threshold $\tau$ is set with knowledge of the expected range of risk values in the population of interest and $\lambda$ is the penalty for rule $d$ exceeding the risk threshold. 
+
+The input dataset needs to be a data.frame() with the following: 
+  (1) benefit score column, preferably labeled as `y`,
+  (2) risk score column, preferably labeled as `r`,
+  (3) binary treatment column, preferably labeled `trt` having treatment indicator scores of 0 or +1,
+  (4) propensity score column, preferably labeled `prtx`,
+  (5) columns of predictors
+
+
+# Constructing an rcDT Model
+
+A single rcDT tree structrue can be constructed using the function `grow.ITR`. By default the number of observations allowed in a terminal node is 20 (`min.ndsz = 20`), there must be at least 5 observations from each treatment group in a terminal node (`n0 = 5`), and the maximum tree depth is set at 15 (`max.depth = 15`). The initial objective value of the root node is the maximum of $\hat{L}(d)$ with all subjects given treatment or all patients given control. The root node is split only made if there is a binary partition on a predictor for which the Lagrangian objective increases. The same is true for additional splits so that the tree cannot grow larger unless there is an increase in overall objective value of the tree given by the split. The function requires the user to input values for $\tau$ and $\lambda$.  
+
+\pagebreak
+
+## Example
+
+We will use an example dataset generated from the function `generateData()` which simulates RCT data from the model with
+
+$$ Y = 1 - X_3 + X_4 + 3\text{I}_{x \in S}\text{I}_{A = 1} + 3\text{I}_{x \notin S}\text{I}_{A = 0} + \epsilon_Y. $$ 
+$$ R = 2 + 2X_3 + X_4 + (2X_2 + 0.1)(2A-1) + \epsilon_R. $$
+where $S = \{X_1\le 0.7\hspace{2mm} \cap\hspace{2mm} X_2\le 0.7\}$,  $\epsilon_Y\sim N(0,1)$, and $\epsilon_R\sim N(0,0.5)$. Covariates $X_1 - X_{10} \sim \text{Unif}(0,1)$. The simulated data has 1000 observations.
+ 
+\vspace{5mm}
+
+```{r Generate data set, results='markup', echo=TRUE}
+set.seed(123)
+dat <- generateData(n = 1000)
+str(dat)
+
+```
+
+\vspace{5mm}
+
+Figure 1 presents the risk score distributions for the original treated and control groups. Risk scores are lower on average for the control arm of the study and so we may want to set the risk threshold to be around the center of the distribution of risk scores for the control arm. Hence, we will set $\tau = 2.75$. We will use a penalty of $\lambda = 1$ temporarily. 
+
+```{r Summary plots, results='markup', echo=FALSE, results='show', fig.cap="Figure 1. Risk score distribution for simulated data", fig.width=7}
+
+boxplot(dat$r ~ dat$trt, boxwex = 0.25,
+        xlab = "Original Treatment Group",
+        main = "Risk Distribution by Treatment Group",
+        ylab = "Risk Score", axes = FALSE)
+axis(1, at = 1:2, labels = c("Control", "Treated"),
+     col = "white"); axis(2, las = 2)
+
+```
+
+\vspace{5mm}
+
+Below is the tree structure generated for the simulated data corresponding the a risk threshold of $\tau = 2.75$ and penalty $\lambda = 1$. 
+```{r Grow a tree tau 2.75 - lambda 1, results='markup', echo=TRUE}
+tre1 <- grow.ITR(data = dat, 
+                 split.var = 1:10,
+                 risk.threshold = 2.75,
+                 lambda = 1,
+                 efficacy = "y",
+                 risk = "r",
+                 col.trt = "trt",
+                 col.prtx = "prtx")
+tre1$tree
+```
+
+The output contains a summary of the tree structure. The `node` column begins with the root node `0` and each subsequent number indicates the direction of the split, with `1` indicating the left (less than or equal to) node and `2` indicating the right (greater than) node. The first row indicates that the covariate $X_2$ is selected as the first splitting variable with a cut point of `cut.2 = 0.375`. The decision is to send treatment to the left node (`cut.1 = "l"`). `size`, `n.1`, and `n.0` indicate there are `r tre1$size[1]` observations in the root node, with `r tre1$n.1[1]` originally treated and `r tre1$n.0[1]` originally on control. The second row with `node = 01` contains information from the left child node with interpretations similar to those described for the root node. The splitting information denoted by `NA` indicates a terminal node, `01111` for instance. 
+
+\vspace{5mm}
+
+If we use the same risk threshold of $\tau = 2.75$ but with a stricter penalty $\lambda = 2$, we obtain the following tree structre. 
+
+```{r Grow a tree tau 2.75 - lambda 2, results='markup', echo=TRUE}
+tre2 <- grow.ITR(data = dat, 
+                 split.var = 1:10,
+                 risk.threshold = 2.75,
+                 lambda = 2,
+                 efficacy = "y",
+                 risk = "r",
+                 col.trt = "trt",
+                 col.prtx = "prtx")
+tre2$tree
+```
+ 
+Note that the tree structures generated for different penalty values are very different. The estimated risk in the training set when $\lambda = 1$ is `r sprintf("%.2f", mean(dat$r * (dat$trt == predict.ITR(tre1$tree, dat, 1:10)$trt.pred) / 0.5))` and when $\lambda = 2$ the estimated risk is `r sprintf("%.2f", mean(dat$r * (dat$trt == predict.ITR(tre2$tree, dat, 1:10)$trt.pred) / 0.5))`. Thus we see that selection of $\lambda$ is important as both penalties controls risk below $\tau = 2.75$, but setting $\lambda = 2$ may over control risk and result a loss of potential benefit. 
+\vspace{5mm}
+
+## Pruning a Tree
+
+The function `prune()` determines the series of optimally pruned subtrees from a large tree. A branch of the large tree is deemed the "weakest" branch if trimming the branch from the large tree results in the smallest decrease in objective function value. This is repeated until the null tree is reached. Below is the result from the pruning procedure for $\tau = 2.75$ and $\lambda = 1$. Each row corresponds to the sequence of pruning to be performed in the input tree. For instance, in this case we would first trim off descendant nodes of 0111 and declare `0111` a terminal node. The column `V` gives the sequence of objective function values for each pruning event. 
+ 
+\vspace{5mm}
+
+```{r Code Tree Pruning, results='markup'}
+pruned1 <- prune(tre1, a = 0, risk.threshold = 2.75, lambda = 1)
+pruned.display <- pruned1$result[,c(1:6,10,11)]
+pruned.display$alpha <- sprintf("%.3f", as.numeric(pruned.display$alpha))
+pruned.display$V <- sprintf("%.3f", as.numeric(pruned.display$V))
+pruned.display$Benefit <- sprintf("%.3f", as.numeric(pruned.display$Benefit))
+pruned.display$Risk <- sprintf("%.3f", as.numeric(pruned.display$Risk))
+pruned.display
+
+```
+ 
+\vspace{5mm}
+
+The first row represents the entire tree (`subtree 1`) and provides the weakest link (`node.rm`), number of total nodes in the subtree (`size.tree`), number of terminal nodes in the subtree (`size.tmnl`), the $\alpha$ parameter, the Lagrangian "value" for the subtree (`V`), the benefit in the training data (`Benefit`), and the risk (`Risk`). Here, the risk is controlled in all subtrees and the third subtree also gives the greatest benefit.
+
+## Cross Validation for Model Selection
+
+One issue with the approach above for model selection is the risk of overfitting through using the training data alone for model selection. The function `treeCV()` will perform n-fold cross validation to select the optimal tuning parameter ($\alpha$). The function returns the optimal model, selected tuning parameter, and several summary measures.
+
+```{r, Cross Validated Pruning Model, results='hide', echo=TRUE}
+rcDT.fit <- treeCV(dat = dat, 
+                   split.var = 1:10,
+                   lambda = 1,
+                   risk.threshold = 2.75, 
+                   efficacy = "y",
+                   risk = "r",
+                   col.trt = "trt",
+                   col.prtx = "prtx",
+                   nfolds = 5)
+
+```
+
+Note that the optimal tree presented here is selected using 5-fold cross validation and is `subtree 3` from the pruning procedure. The final model has a training set benefit estimated as `r sprintf("%.2f", mean(dat$y * (dat$trt == predict.ITR(rcDT.fit$best.tree.alpha, dat, 1:10)$trt.pred) / 0.5))` and risk estimated as `r sprintf("%.2f", mean(dat$r * (dat$trt == predict.ITR(rcDT.fit$best.tree.alpha, dat, 1:10)$trt.pred) / 0.5))`. 
+
+## Constructing a Risk Controlled Random Forest (rcRF) Model 
+
+A single tree which is trained using all available data may be overfitted, having poor predictive ability in an external dataset. Hence, we make a decision rule using a forest of rcDT predictors. Each rcDT model is constructed to be more variable, but the aggregation of the trees in the mitigates this variance. An rcRF is contructed using the function `Build.RF.ITR()` and requires similar inputs to the `grow.ITR()` function. To randomized the growth of trees in the forest a subset of predictors, `mtry`, is selected as potential splitting variables at each split which defaults to the maximum of 1/3 the number of splitting variables and 1. By default the number of trees contructed, `ntree`, is 500. Each tree is grown using a bootstrap sample taken from the input dataset without replacement. The function returns the bootstrap samples used in tree construction, the trees, the model parameters, and several summaries for the in- and out-of-bag samples. We leverage the out-of-bag sample, i.e. observations not in the bootstrap sample, to obtain risk control estimates which are less biased than those obtained directly from training data. Hence, several values of $\lambda$ may need to be used in order to final an optimized model for a given risk threshold $\tau$. The final treatment recommendation is given by taking a majority vote from the individual models in the forest. 
+
+Below is the function call for constructing an rcRF model. In the next section we compare modeling results from rcDT and rcRF procedures graphically.
+
+\vspace{5mm}
+
+```{r, Code Forest Growth, results='markup'}
+set.seed(2)
+rcRF.fit <- Build.RF.ITR(dat, 
+                         split.var = 1:10, 
+                         efficacy = "y", 
+                         risk = "r",
+                         col.trt = "trt",
+                         col.prtx = "prtx",
+                         risk.threshold = 2.75,
+                         ntree = 100, 
+                         lambda = 0.5)
+```
+
+## Predictions for rcDT and rcRF Models
+
+Prediction from rcDT and rcRF models can be obtained using the `predict.ITR()` function. The output from `predict.ITR()` is a list of several summaries from the model. If the model from which predictions are desired is an rcDT model, then of interest is `trt.pred` which gives the treatment recommendation vector for the prediction data. If the model is an rcRF, then `trt.pred` given the treatment recommendation based on majority voting. Also, `SummaryTreat` gives the probability of being recommended to active treatment ($a = 1$) and `tree.votes` provides a matrix of votes from each tree.
+
+\vspace{5mm}
+
+```{r, Treatment Prediction, results='markup', echo=TRUE}
+preds.rcDT <- predict.ITR(rcDT.fit$best.tree.alpha, 
+                          new.data = dat, 
+                          split.var = 1:10)$trt.pred
+preds.rcRF <- predict.ITR(rcRF.fit, 
+                          new.data = dat, 
+                          split.var = 1:10)$trt.pred
+
+```
+
+
+
+```{r, Treatment Prediction Plot, results='markup', echo=FALSE, fig.cap="Figure 2. Prediction Comparisons for rcDT and rcRF Models.", fig.width=10, fig.height=6}
+
+par(mfrow = c(1,2))
+par(mar = c(5,5,5,1))
+
+plot(dat$x1, dat$x2, pch = 16, 
+     cex = 100, col = "lightgray", 
+     xlab = expression(X[1]),
+     ylab = expression(X[2]),
+     main = paste0("Predictions from rcDT (Tree) Model\n", 
+                   "Efficacy = ", 
+                   sprintf("%.2f", mean(dat$y * (dat$trt == preds.rcDT) / 0.5)),
+                   "\nRisk = ", 
+                   sprintf("%.2f", mean(dat$r * (dat$trt == preds.rcDT) / 0.5))),
+     axes = FALSE)
+points(dat$x1, dat$x2, pch = 16, 
+       cex = 0.8, 
+       col = ifelse(preds.rcDT == 1, "forestgreen", "hotpink"))
+axis(1); axis(2, las = 2)
+
+plot(dat$x1, dat$x2, pch = 16, 
+     cex = 100, col = "lightgray", 
+     xlab = expression(X[1]),
+     ylab = expression(X[2]),
+     main = paste0("Predictions from rcRF (Forest) Model\n", 
+                   "Efficacy = ", 
+                   sprintf("%.2f", mean(dat$y * (dat$trt == preds.rcRF) / 0.5)),
+                   "\nRisk = ", 
+                   sprintf("%.2f", mean(dat$r * (dat$trt == preds.rcRF) / 0.5))),
+     axes = FALSE)
+points(dat$x1, dat$x2, pch = 16, 
+       cex = 0.8, 
+       col = ifelse(preds.rcRF == 1, "forestgreen", "hotpink"))
+axis(1); axis(2, las = 2)
+
+``` 
+
+## Variable Importance
+
+Finally, we include a function to calculate the importance of a predictor relative to the total Lagrangian objective, the benefit scores, and the risk scores. This is accomplished by using the function `Variable.Importance.ITR()`. All three importance measures are calculated and returned. Here the `sort` argument is set to FALSE so that the importances are not individually ordered.  
+ 
+\vspace{5mm}
+
+```{r, Code Variable Importance, results='markup'}
+VI <- Variable.Importance.ITR(rcRF.fit, sort = FALSE)
+do.call(cbind, VI)
+```
+ 
+The variable importance results would be interpreted as $X_1$ and $X_2$ being important contributors to the overall rule (`VI`). Both $X_1$ and $X_2$ contribute similarly to efficacy (benefit) scores, but $X_2$ is strongly predictive of risk scores, i.e. importance in keeping the risk constrained. 
+\vspace{5mm}
+
+
+## References
+
+[In Submission] Doubleday, K., Zhou, J., Fu, H. (2020), "Risk Controlled Decision Trees and Random Forests for Individualized Treatment Recommendations".

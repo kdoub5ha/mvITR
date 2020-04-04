@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<title>mvITR-vignette</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(title);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">mvITR-vignette</h1>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>The package <code>mvITR</code> is an individualized treatment rule (ITR) discovery tool that estimates ITRs under a constrained optimization framework. The main functions are <code>grow.ITR()</code> and <code>Build.RF.ITR()</code>. The <code>grow.ITR()</code> function constructs a risk controlled decision tree (rcDT) and <code>Build.RF.ITR()</code> constructs a risk controlled random forest (rcRF). The aim of each model is to maximize an expected benefit (Y) while constraining risk (R) at a pre-determined threshold. Each model is constructed to optimize a Lagrangian objective function which takes the form, <span class="math display">\[
+L(d) = E(Y) - \lambda(E(R) - \tau).
+\]</span> Here, <span class="math inline">\(d\)</span> is a treatment decision rule of the form <span class="math inline">\(d(X): X \rightarrow A\)</span> for predictors <span class="math inline">\(X\)</span> and treatments <span class="math inline">\(A\in \{0,1\}\)</span>. <span class="math inline">\(E(Y)\)</span> and <span class="math inline">\(E(R)\)</span> are estimated using the so-called “value” function and correspond to the expected benefit and risk if rule <span class="math inline">\(d\)</span> were used. For example, the estimated value of treatment recommendation <span class="math inline">\(d\)</span> would be <span class="math display">\[E(Y) =N^{-1} \sum_{i=1}^{N} \frac{\textbf{I}_{a_i=d(\textbf{x}_i)}}{\hat{p}(a_i|\textbf{x}_i)}y_i \]</span> where <span class="math inline">\(\textbf{x}_i\)</span> is the covariate vector, <span class="math inline">\(a_i\)</span> is the original treatment assignment, <span class="math inline">\(d(\textbf{x}_i)\)</span> is the proposed treatment rule, and <span class="math inline">\(\hat{p}(a_i|\textbf{x}_i)\)</span> is the probability of receiving treatment given the covariates. The estimated ``value&quot; associated with the risk outcome is simiarly estimated. The pre-determined risk threshold <span class="math inline">\(\tau\)</span> is set with knowledge of the expected range of risk values in the population of interest and <span class="math inline">\(\lambda\)</span> is the penalty for rule <span class="math inline">\(d\)</span> exceeding the risk threshold.</p>
+<p>The input dataset needs to be a data.frame() with the following: (1) benefit score column, preferably labeled as <code>y</code>, (2) risk score column, preferably labeled as <code>r</code>, (3) binary treatment column, preferably labeled <code>trt</code> having treatment indicator scores of 0 or +1, (4) propensity score column, preferably labeled <code>prtx</code>, (5) columns of predictors</p>
+</div>
+<div id="constructing-an-rcdt-model" class="section level1">
+<h1>Constructing an rcDT Model</h1>
+<p>A single rcDT tree structrue can be constructed using the function <code>grow.ITR</code>. By default the number of observations allowed in a terminal node is 20 (<code>min.ndsz = 20</code>), there must be at least 5 observations from each treatment group in a terminal node (<code>n0 = 5</code>), and the maximum tree depth is set at 15 (<code>max.depth = 15</code>). The initial objective value of the root node is the maximum of <span class="math inline">\(\hat{L}(d)\)</span> with all subjects given treatment or all patients given control. The root node is split only made if there is a binary partition on a predictor for which the Lagrangian objective increases. The same is true for additional splits so that the tree cannot grow larger unless there is an increase in overall objective value of the tree given by the split. The function requires the user to input values for <span class="math inline">\(\tau\)</span> and <span class="math inline">\(\lambda\)</span>.</p>
+
+<div id="example" class="section level2">
+<h2>Example</h2>
+<p>We will use an example dataset generated from the function <code>generateData()</code> which simulates RCT data from the model with</p>
+<p><span class="math display">\[ Y = 1 - X_3 + X_4 + 3\text{I}_{x \in S}\text{I}_{A = 1} + 3\text{I}_{x \notin S}\text{I}_{A = 0} + \epsilon_Y. \]</span> <span class="math display">\[ R = 2 + 2X_3 + X_4 + (2X_2 + 0.1)(2A-1) + \epsilon_R. \]</span> where <span class="math inline">\(S = \{X_1\le 0.7\hspace{2mm} \cap\hspace{2mm} X_2\le 0.7\}\)</span>, <span class="math inline">\(\epsilon_Y\sim N(0,1)\)</span>, and <span class="math inline">\(\epsilon_R\sim N(0,0.5)\)</span>. Covariates <span class="math inline">\(X_1 - X_{10} \sim \text{Unif}(0,1)\)</span>. The simulated data has 1000 observations.</p>
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">set.seed</span>(<span class="dv">123</span>)</a>
+<a class="sourceLine" id="cb1-2" title="2">dat &lt;-<span class="st"> </span><span class="kw">generateData</span>(<span class="dt">n =</span> <span class="dv">1000</span>)</a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="kw">str</span>(dat)</a></code></pre></div>
+<pre><code>## &#39;data.frame&#39;:    1000 obs. of  14 variables:
+##  $ x1  : num  0.274 0.594 0.16 0.853 0.848 0.478 0.774 0.295 0.066 0.441 ...
+##  $ x2  : num  0.16 0.145 0.149 0.514 0.493 0.616 0.447 0.056 0.005 0.222 ...
+##  $ x3  : num  0.206 0.943 0.379 0.626 0.184 0.659 0.735 0.496 0.869 0.832 ...
+##  $ x4  : num  0.304 0.833 0.594 0.807 0.294 0.141 0.889 0.008 0.569 0.968 ...
+##  $ x5  : num  0.249 0.989 0.717 0.652 0.241 0.087 0.297 0.542 0.781 0.272 ...
+##  $ x6  : num  0.44 0.397 0.372 0.529 0.074 0.717 0.243 0.844 0.995 0.105 ...
+##  $ x7  : num  0.93 0.591 0.08 0.845 0.03 0.815 0.391 0.143 0.667 0.619 ...
+##  $ x8  : num  0.578 0.489 0.742 0.226 0.749 0.825 0.1 0.276 0.021 0.596 ...
+##  $ x9  : num  0.798 0.879 0.242 0.56 0.905 0.008 0.163 0.26 0.773 0.071 ...
+##  $ x10 : num  0.311 0.325 0.87 0.329 0.126 0.356 0.931 0.875 0.82 0.022 ...
+##  $ trt : num  0 1 0 1 1 0 1 1 1 0 ...
+##  $ y   : num  -0.259 2.597 -0.302 2.04 -0.105 ...
+##  $ r   : num  2.44 5.06 3.4 5.58 3.56 ...
+##  $ prtx: num  0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 ...</code></pre>
+
+<p>Figure 1 presents the risk score distributions for the original treated and control groups. Risk scores are lower on average for the control arm of the study and so we may want to set the risk threshold to be around the center of the distribution of risk scores for the control arm. Hence, we will set <span class="math inline">\(\tau = 2.75\)</span>. We will use a penalty of <span class="math inline">\(\lambda = 1\)</span> temporarily.</p>
+<div class="figure">
+<img src="data:image/png;base64,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" alt="Figure 1. Risk score distribution for simulated data" />
+<p class="caption">Figure 1. Risk score distribution for simulated data</p>
+</div>
+
+<p>Below is the tree structure generated for the simulated data corresponding the a risk threshold of <span class="math inline">\(\tau = 2.75\)</span> and penalty <span class="math inline">\(\lambda = 1\)</span>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1">tre1 &lt;-<span class="st"> </span><span class="kw">grow.ITR</span>(<span class="dt">data =</span> dat, </a>
+<a class="sourceLine" id="cb3-2" title="2">                 <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb3-3" title="3">                 <span class="dt">risk.threshold =</span> <span class="fl">2.75</span>,</a>
+<a class="sourceLine" id="cb3-4" title="4">                 <span class="dt">lambda =</span> <span class="dv">1</span>,</a>
+<a class="sourceLine" id="cb3-5" title="5">                 <span class="dt">efficacy =</span> <span class="st">&quot;y&quot;</span>,</a>
+<a class="sourceLine" id="cb3-6" title="6">                 <span class="dt">risk =</span> <span class="st">&quot;r&quot;</span>,</a>
+<a class="sourceLine" id="cb3-7" title="7">                 <span class="dt">col.trt =</span> <span class="st">&quot;trt&quot;</span>,</a>
+<a class="sourceLine" id="cb3-8" title="8">                 <span class="dt">col.prtx =</span> <span class="st">&quot;prtx&quot;</span>)</a>
+<a class="sourceLine" id="cb3-9" title="9">tre1<span class="op">$</span>tree</a></code></pre></div>
+<pre><code>##    node size n.1 n.0  trt.effect var vname cut.1 cut.2     score
+## 1     0 1000 493 507 -0.06270569   2    x2     l 0.375 0.7737619
+## 2    01  375 171 204  1.54917989   1    x1     l   0.7 1.0365538
+## 4   011  272 127 145  3.16089604   1    x1     r 0.146 1.0441871
+## 7  0111   64  43  21  3.41820745   3    x3     l 0.554 1.1387003
+## 8 01111   33  17  16  3.74122390  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;        NA
+## 9 01112   31  26   5  2.93340889  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;        NA
+## 6  0112  208  84 124  3.08720763  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;        NA
+## 5   012  103  44  59 -2.77035501  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;        NA
+## 3    02  625 322 303 -1.02758659  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;        NA</code></pre>
+<p>The output contains a summary of the tree structure. The <code>node</code> column begins with the root node <code>0</code> and each subsequent number indicates the direction of the split, with <code>1</code> indicating the left (less than or equal to) node and <code>2</code> indicating the right (greater than) node. The first row indicates that the covariate <span class="math inline">\(X_2\)</span> is selected as the first splitting variable with a cut point of <code>cut.2 = 0.375</code>. The decision is to send treatment to the left node (<code>cut.1 = &quot;l&quot;</code>). <code>size</code>, <code>n.1</code>, and <code>n.0</code> indicate there are observations in the root node, with originally treated and originally on control. The second row with <code>node = 01</code> contains information from the left child node with interpretations similar to those described for the root node. The splitting information denoted by <code>NA</code> indicates a terminal node, <code>01111</code> for instance.</p>
+
+<p>If we use the same risk threshold of <span class="math inline">\(\tau = 2.75\)</span> but with a stricter penalty <span class="math inline">\(\lambda = 2\)</span>, we obtain the following tree structre.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">tre2 &lt;-<span class="st"> </span><span class="kw">grow.ITR</span>(<span class="dt">data =</span> dat, </a>
+<a class="sourceLine" id="cb5-2" title="2">                 <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb5-3" title="3">                 <span class="dt">risk.threshold =</span> <span class="fl">2.75</span>,</a>
+<a class="sourceLine" id="cb5-4" title="4">                 <span class="dt">lambda =</span> <span class="dv">2</span>,</a>
+<a class="sourceLine" id="cb5-5" title="5">                 <span class="dt">efficacy =</span> <span class="st">&quot;y&quot;</span>,</a>
+<a class="sourceLine" id="cb5-6" title="6">                 <span class="dt">risk =</span> <span class="st">&quot;r&quot;</span>,</a>
+<a class="sourceLine" id="cb5-7" title="7">                 <span class="dt">col.trt =</span> <span class="st">&quot;trt&quot;</span>,</a>
+<a class="sourceLine" id="cb5-8" title="8">                 <span class="dt">col.prtx =</span> <span class="st">&quot;prtx&quot;</span>)</a>
+<a class="sourceLine" id="cb5-9" title="9">tre2<span class="op">$</span>tree</a></code></pre></div>
+<pre><code>##      node size n.1 n.0  trt.effect var vname cut.1 cut.2    score
+## 1       0 1000 493 507 -0.06270569   2    x2     l 0.222 1.102211
+## 2      01  239 105 134  1.64864910   5    x5     r 0.183 1.185148
+## 5     011   40  23  17  1.80177300   6    x6     l 0.408 1.263723
+## 7    0111   20  10  10  2.70679431  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 8    0112   20  13   7  0.85014367  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 4     012  199  82 117  1.60114367   7    x7     l 0.908 1.232362
+## 9    0121  174  67 107  1.54684236   4    x4     r 0.155 1.290317
+## 10  01211   21  12   9  2.02141225  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 11  01212  153  55  98  1.48363335   3    x3     r 0.275 1.315274
+## 13 012121   33  18  15  1.54417262  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 12 012122  120  37  83  1.39675961  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 6    0122   25  15  10  2.30562179  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA
+## 3      02  761 388 373 -0.60015177  NA  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;       NA</code></pre>
+<p>Note that the tree structures generated for different penalty values are very different. The estimated risk in the training set when <span class="math inline">\(\lambda = 1\)</span> is 2.40 and when <span class="math inline">\(\lambda = 2\)</span> the estimated risk is 2.22. Thus we see that selection of <span class="math inline">\(\lambda\)</span> is important as both penalties controls risk below <span class="math inline">\(\tau = 2.75\)</span>, but setting <span class="math inline">\(\lambda = 2\)</span> may over control risk and result a loss of potential benefit. </p>
+</div>
+<div id="pruning-a-tree" class="section level2">
+<h2>Pruning a Tree</h2>
+<p>The function <code>prune()</code> determines the series of optimally pruned subtrees from a large tree. A branch of the large tree is deemed the “weakest” branch if trimming the branch from the large tree results in the smallest decrease in objective function value. This is repeated until the null tree is reached. Below is the result from the pruning procedure for <span class="math inline">\(\tau = 2.75\)</span> and <span class="math inline">\(\lambda = 1\)</span>. Each row corresponds to the sequence of pruning to be performed in the input tree. For instance, in this case we would first trim off descendant nodes of 0111 and declare <code>0111</code> a terminal node. The column <code>V</code> gives the sequence of objective function values for each pruning event.</p>
+
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" title="1">pruned1 &lt;-<span class="st"> </span><span class="kw">prune</span>(tre1, <span class="dt">a =</span> <span class="dv">0</span>, <span class="dt">risk.threshold =</span> <span class="fl">2.75</span>, <span class="dt">lambda =</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb7-2" title="2">pruned.display &lt;-<span class="st"> </span>pruned1<span class="op">$</span>result[,<span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">6</span>,<span class="dv">10</span>,<span class="dv">11</span>)]</a>
+<a class="sourceLine" id="cb7-3" title="3">pruned.display<span class="op">$</span>alpha &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, <span class="kw">as.numeric</span>(pruned.display<span class="op">$</span>alpha))</a>
+<a class="sourceLine" id="cb7-4" title="4">pruned.display<span class="op">$</span>V &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, <span class="kw">as.numeric</span>(pruned.display<span class="op">$</span>V))</a>
+<a class="sourceLine" id="cb7-5" title="5">pruned.display<span class="op">$</span>Benefit &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, <span class="kw">as.numeric</span>(pruned.display<span class="op">$</span>Benefit))</a>
+<a class="sourceLine" id="cb7-6" title="6">pruned.display<span class="op">$</span>Risk &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, <span class="kw">as.numeric</span>(pruned.display<span class="op">$</span>Risk))</a>
+<a class="sourceLine" id="cb7-7" title="7">pruned.display</a></code></pre></div>
+<pre><code>##   subtree node.rm size.tree size.tmnl    alpha     V Benefit  Risk
+## 1       1    0111         9         5    1.044 1.139   0.792 2.403
+## 2       2     011         7         4    1.037 1.044   0.669 2.374
+## 3       3      01         5         3    0.774 1.037   0.889 2.602
+## 4       4       0         3         2    0.275 0.774   0.610 2.586
+## 5       5      NA         1         1 9999.000 0.275   0.031 2.506</code></pre>
+
+<p>The first row represents the entire tree (<code>subtree 1</code>) and provides the weakest link (<code>node.rm</code>), number of total nodes in the subtree (<code>size.tree</code>), number of terminal nodes in the subtree (<code>size.tmnl</code>), the <span class="math inline">\(\alpha\)</span> parameter, the Lagrangian “value” for the subtree (<code>V</code>), the benefit in the training data (<code>Benefit</code>), and the risk (<code>Risk</code>). Here, the risk is controlled in all subtrees and the third subtree also gives the greatest benefit.</p>
+</div>
+<div id="cross-validation-for-model-selection" class="section level2">
+<h2>Cross Validation for Model Selection</h2>
+<p>One issue with the approach above for model selection is the risk of overfitting through using the training data alone for model selection. The function <code>treeCV()</code> will perform n-fold cross validation to select the optimal tuning parameter (<span class="math inline">\(\alpha\)</span>). The function returns the optimal model, selected tuning parameter, and several summary measures.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1">rcDT.fit &lt;-<span class="st"> </span><span class="kw">treeCV</span>(<span class="dt">dat =</span> dat, </a>
+<a class="sourceLine" id="cb9-2" title="2">                   <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb9-3" title="3">                   <span class="dt">lambda =</span> <span class="dv">1</span>,</a>
+<a class="sourceLine" id="cb9-4" title="4">                   <span class="dt">risk.threshold =</span> <span class="fl">2.75</span>, </a>
+<a class="sourceLine" id="cb9-5" title="5">                   <span class="dt">efficacy =</span> <span class="st">&quot;y&quot;</span>,</a>
+<a class="sourceLine" id="cb9-6" title="6">                   <span class="dt">risk =</span> <span class="st">&quot;r&quot;</span>,</a>
+<a class="sourceLine" id="cb9-7" title="7">                   <span class="dt">col.trt =</span> <span class="st">&quot;trt&quot;</span>,</a>
+<a class="sourceLine" id="cb9-8" title="8">                   <span class="dt">col.prtx =</span> <span class="st">&quot;prtx&quot;</span>,</a>
+<a class="sourceLine" id="cb9-9" title="9">                   <span class="dt">nfolds =</span> <span class="dv">5</span>)</a></code></pre></div>
+<p>Note that the optimal tree presented here is selected using 5-fold cross validation and is <code>subtree 3</code> from the pruning procedure. The final model has a training set benefit estimated as 3.33 and risk estimated as 2.60.</p>
+</div>
+<div id="constructing-a-risk-controlled-random-forest-rcrf-model" class="section level2">
+<h2>Constructing a Risk Controlled Random Forest (rcRF) Model</h2>
+<p>A single tree which is trained using all available data may be overfitted, having poor predictive ability in an external dataset. Hence, we make a decision rule using a forest of rcDT predictors. Each rcDT model is constructed to be more variable, but the aggregation of the trees in the mitigates this variance. An rcRF is contructed using the function <code>Build.RF.ITR()</code> and requires similar inputs to the <code>grow.ITR()</code> function. To randomized the growth of trees in the forest a subset of predictors, <code>mtry</code>, is selected as potential splitting variables at each split which defaults to the maximum of 1/3 the number of splitting variables and 1. By default the number of trees contructed, <code>ntree</code>, is 500. Each tree is grown using a bootstrap sample taken from the input dataset without replacement. The function returns the bootstrap samples used in tree construction, the trees, the model parameters, and several summaries for the in- and out-of-bag samples. We leverage the out-of-bag sample, i.e. observations not in the bootstrap sample, to obtain risk control estimates which are less biased than those obtained directly from training data. Hence, several values of <span class="math inline">\(\lambda\)</span> may need to be used in order to final an optimized model for a given risk threshold <span class="math inline">\(\tau\)</span>. The final treatment recommendation is given by taking a majority vote from the individual models in the forest.</p>
+<p>Below is the function call for constructing an rcRF model. In the next section we compare modeling results from rcDT and rcRF procedures graphically.</p>
+
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1"><span class="kw">set.seed</span>(<span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb10-2" title="2">rcRF.fit &lt;-<span class="st"> </span><span class="kw">Build.RF.ITR</span>(dat, </a>
+<a class="sourceLine" id="cb10-3" title="3">                         <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, </a>
+<a class="sourceLine" id="cb10-4" title="4">                         <span class="dt">efficacy =</span> <span class="st">&quot;y&quot;</span>, </a>
+<a class="sourceLine" id="cb10-5" title="5">                         <span class="dt">risk =</span> <span class="st">&quot;r&quot;</span>,</a>
+<a class="sourceLine" id="cb10-6" title="6">                         <span class="dt">col.trt =</span> <span class="st">&quot;trt&quot;</span>,</a>
+<a class="sourceLine" id="cb10-7" title="7">                         <span class="dt">col.prtx =</span> <span class="st">&quot;prtx&quot;</span>,</a>
+<a class="sourceLine" id="cb10-8" title="8">                         <span class="dt">risk.threshold =</span> <span class="fl">2.75</span>,</a>
+<a class="sourceLine" id="cb10-9" title="9">                         <span class="dt">ntree =</span> <span class="dv">100</span>, </a>
+<a class="sourceLine" id="cb10-10" title="10">                         <span class="dt">lambda =</span> <span class="fl">0.5</span>)</a></code></pre></div>
+</div>
+<div id="predictions-for-rcdt-and-rcrf-models" class="section level2">
+<h2>Predictions for rcDT and rcRF Models</h2>
+<p>Prediction from rcDT and rcRF models can be obtained using the <code>predict.ITR()</code> function. The output from <code>predict.ITR()</code> is a list of several summaries from the model. If the model from which predictions are desired is an rcDT model, then of interest is <code>trt.pred</code> which gives the treatment recommendation vector for the prediction data. If the model is an rcRF, then <code>trt.pred</code> given the treatment recommendation based on majority voting. Also, <code>SummaryTreat</code> gives the probability of being recommended to active treatment (<span class="math inline">\(a = 1\)</span>) and <code>tree.votes</code> provides a matrix of votes from each tree.</p>
+
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1">preds.rcDT &lt;-<span class="st"> </span><span class="kw">predict.ITR</span>(rcDT.fit<span class="op">$</span>best.tree.alpha, </a>
+<a class="sourceLine" id="cb11-2" title="2">                          <span class="dt">new.data =</span> dat, </a>
+<a class="sourceLine" id="cb11-3" title="3">                          <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>)<span class="op">$</span>trt.pred</a>
+<a class="sourceLine" id="cb11-4" title="4">preds.rcRF &lt;-<span class="st"> </span><span class="kw">predict.ITR</span>(rcRF.fit, </a>
+<a class="sourceLine" id="cb11-5" title="5">                          <span class="dt">new.data =</span> dat, </a>
+<a class="sourceLine" id="cb11-6" title="6">                          <span class="dt">split.var =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>)<span class="op">$</span>trt.pred</a></code></pre></div>
+<div class="figure">
+<img src="data:image/png;base64,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" alt="Figure 2. Prediction Comparisons for rcDT and rcRF Models." />
+<p class="caption">Figure 2. Prediction Comparisons for rcDT and rcRF Models.</p>
+</div>
+</div>
+<div id="variable-importance" class="section level2">
+<h2>Variable Importance</h2>
+<p>Finally, we include a function to calculate the importance of a predictor relative to the total Lagrangian objective, the benefit scores, and the risk scores. This is accomplished by using the function <code>Variable.Importance.ITR()</code>. All three importance measures are calculated and returned. Here the <code>sort</code> argument is set to FALSE so that the importances are not individually ordered.</p>
+
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1">VI &lt;-<span class="st"> </span><span class="kw">Variable.Importance.ITR</span>(rcRF.fit, <span class="dt">sort =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb12-2" title="2"><span class="kw">do.call</span>(cbind, VI)</a></code></pre></div>
+<pre><code>##              VI VI.Efficacy     VI.Risk
+## x1  0.334219577 0.409529551 0.051201822
+## x2  0.620806424 0.509476909 0.774527108
+## x3  0.007232439 0.007237559 0.050649760
+## x4  0.001752293 0.006030175 0.016869238
+## x5  0.007612954 0.015577709 0.021202264
+## x6  0.006659522 0.009052977 0.030070856
+## x7  0.005733323 0.011851155 0.018243701
+## x8  0.007026367 0.012055048 0.008886186
+## x9  0.003253728 0.007425340 0.010101243
+## x10 0.005703372 0.011763577 0.018247821</code></pre>
+<p>The variable importance results would be interpreted as <span class="math inline">\(X_1\)</span> and <span class="math inline">\(X_2\)</span> being important contributors to the overall rule (<code>VI</code>). Both <span class="math inline">\(X_1\)</span> and <span class="math inline">\(X_2\)</span> contribute similarly to efficacy (benefit) scores, but <span class="math inline">\(X_2\)</span> is strongly predictive of risk scores, i.e. importance in keeping the risk constrained. </p>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>[In Submission] Doubleday, K., Zhou, J., Fu, H. (2020), “Risk Controlled Decision Trees and Random Forests for Individualized Treatment Recommendations”.</p>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
