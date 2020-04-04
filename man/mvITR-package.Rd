@@ -9,7 +9,7 @@
   This package can be used for discovery of risk controlled individualized treatment rules (ITRs) via risk controlled decision trees (rcDT) or risk controlled random forests (rcRF).
 }
 \details{
-  Use the grow.ITR() and Build.RF.ITR() functions for risk controITR discovery. 
+  Use the grow.ITR() and Build.RF.ITR() functions for risk controlled ITR discovery. 
 }
 \author{
 Kevin Doubleday, kdoub5ha@gmail.com.
@@ -17,12 +17,12 @@ Kevin Doubleday, kdoub5ha@gmail.com.
 Maintainer: Kevin Doubleday <kdoub5ha@gmail.com>
 }
 \references{
-  NA. 
+  [In Submission] Doubleday, K., Zhou, J., Fu, H. (2020), "Risk Controlled Decision Trees and Random Forests for Individualized Treatment Recommendations".
 }
 \keyword{ package }
-\seealso{
-  Optional links to other man pages
-}
+#\seealso{
+#  Optional links to other man pages
+#}
 \examples{
   \dontrun{
     set.seed(123)
