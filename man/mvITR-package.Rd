@@ -3,7 +3,7 @@
 \alias{mvITR}
 \docType{package}
 \title{
-  Discovery of multivariate ITR.
+  Discovery of risk controlled individualized treatment rules
 }
 \description{
   This package can be used for discovery of risk controlled individualized treatment rules (ITRs) via risk controlled decision trees (rcDT) or risk controlled random forests (rcRF).
