@@ -1,10 +1,7 @@
 #' @title Prunes an rcDT model 
 #' 
-#' @description The `prune` function allows the user to specify a value of the penalty for a given tree. 
-#' This function uses the "weakest link" criteria in order to evaluate the order in which branches are pruned
-#' and gives the penalized value along with the unpenalized value. If testing data are provided for validation, 
-#' then the penalized and unpenalized values from the testing data run down the tree structure are also provided.  
-#' 
+#' @description The `prune` function determines the "weakest link" criteria for a given tree
+#' in order to evaluate the order in which branches are pruned.
 #' @param tre sets the tree to be pruned 
 #' @param a sets the value of the splitting penalty
 #' @param train the training data used to create the tree
@@ -24,14 +21,14 @@
 
 
 prune <- function(tre, 
-                  a, 
+                  risk.control = TRUE, 
+                  risk.threshold = NA,
+                  lambda = lambda, 
+                  a = 0, 
                   test = NULL, 
                   AIPWE = FALSE, 
                   n0 = 5, 
-                  ctgs = NULL, 
-                  risk.control = TRUE, 
-                  risk.threshold = NA,
-                  lambda = lambda){
+                  ctgs = NULL){
   
   tre.in <- tre$tree
   train <- tre$data 
