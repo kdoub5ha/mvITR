@@ -73,6 +73,8 @@ treeCV <- function(dat,
                    use.bootstrap = FALSE,
                    extremeRandomized = FALSE){
   
+  stabilize.type <- match.arg(stabilize.type)
+  
   # Grow initial tree
   tre <- grow.ITR(data = dat, 
                   split.var = split.var, 
@@ -95,12 +97,7 @@ treeCV <- function(dat,
                   use.other.nodes = use.other.nodes, 
                   extremeRandomized = extremeRandomized)
   
-  input.tre <- tre$tree
-  input.dat <- dat
-  
   # Model residuals if requested
-  stabilize.type <- match.arg(stabilize.type)
-  
   # Shuffle data
   if(!use.bootstrap){
     if(sort) input.dat <- input.dat[sample(1:nrow(input.dat), size = nrow(input.dat)),]
@@ -126,7 +123,7 @@ treeCV <- function(dat,
   trees <- lapply(1:nfolds, function(n) 
     grow.ITR(data = in.train[[n]], 
              test = in.test[[n]], 
-             split.var = sp.var, 
+             split.var = split.var, 
              risk.control = risk.control, 
              risk.threshold = risk.threshold, 
              lambda = lambda,
@@ -137,11 +134,11 @@ treeCV <- function(dat,
              min.ndsz = N0, 
              n0 = n0, 
              AIPWE = AIPWE,
-             ctg = ctgs, 
+             ctg = ctg, 
              mtry = length(split.var),
              stabilize = stabilize, 
              stabilize.type = stabilize.type,
-             max.depth = 10, 
+             max.depth = max.depth, 
              use.other.nodes = use.other.nodes))
   
   out <- lapply(1:length(trees), function(tt){
