@@ -301,5 +301,17 @@ prune <- function(tre,
   } else{
     out <- list(result = result, subtrees = subtrees)  
   }
+                             
+  pr <- lapply(out$subtrees, function(i){
+    predict.ITR(i, train, tre$split.var)$trt.pred
+  })
+  benefits <- do.call(c, lapply(pr, function(i) mean(train$y * (train$trt == i) / 0.5)))
+  base.benefit <- mean(train$y * (train$trt == 0) / 0.5)
+  risks <- do.call(c, lapply(pr, function(i) mean(train$r * (train$trt == i) / 0.5))) 
+  base.risk <- mean(train$r * (train$trt == 0) / 0.5)
+  cbind.data.frame(out$result, 
+                   Benefit = c(benefits, base.benefit), 
+                   Risk = c(risks, base.risk))
+
   return(out)
 }
