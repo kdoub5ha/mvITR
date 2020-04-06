@@ -4,10 +4,10 @@
 \alias{grow.ITR}
 \title{Grows rcDT model}
 \usage{
-\method{grow}{ITR}(data, split.var, test = NULL, ctg = NULL,
-  efficacy = "y", risk = "r", col.trt = "trt", col.prtx = "prtx",
-  risk.control = TRUE, risk.threshold = NA, lambda = 0, min.ndsz = 20,
-  n0 = 5, stabilize = TRUE, stabilize.type = c("linear", "rf"),
+grow.ITR(data, split.var, test = NULL, ctg = NULL, efficacy = "y",
+  risk = "r", col.trt = "trt", col.prtx = "prtx", risk.control = TRUE,
+  risk.threshold = NA, lambda = 0, min.ndsz = 20, n0 = 5,
+  stabilize = TRUE, stabilize.type = c("linear", "rf"),
   use.other.nodes = TRUE, mtry = length(split.var), max.depth = 15,
   AIPWE = FALSE, extremeRandomized = FALSE, print.summary = TRUE)
 }
